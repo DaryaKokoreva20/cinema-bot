@@ -108,13 +108,48 @@ def rate_next_film(message, films, index):
 
 
 def get_filtered_films(filters):
-    films = []
-    with open(r'C:\Users\Даша\Desktop\2 курс\pythonProject\films бд.csv', newline='', encoding='cp1251') as csvfile:
-        reader = csv.DictReader(csvfile, delimiter=';')
-        for row in reader:
-            if matches_filters(row, filters):
-                films.append(row['film_name'])
-    return films
+    query = "SELECT * FROM films"
+    conditions = []
+    params = []
+
+    if 'Год' in filters:
+        conditions.append("year BETWEEN %s AND %s")
+        params.extend(filters['Год'])
+
+    if 'Длительность' in filters:
+        conditions.append("duration BETWEEN %s AND %s")
+        params.extend(filters['Длительность'])
+
+    if 'Рейтинг' in filters:
+        conditions.append("rating BETWEEN %s AND %s")
+        params.extend(filters['Рейтинг'])
+
+    if 'Страна' in filters:
+        country_id = get_country_id(filters['Страна'])
+        if country_id:
+            conditions.append("id_country = %s")
+            params.append(country_id)
+
+    if 'Возрастное ограничение' in filters:
+        age_id = get_age_limit_id(filters['Возрастное ограничение'])
+        if age_id:
+            conditions.append("id_age_limit = %s")
+            params.append(age_id)
+
+    if 'Режиссер' in filters:
+        director_id = get_director_id(filters['Режиссер'])
+        if director_id:
+            conditions.append("id_director = %s")
+            params.append(director_id)
+
+    if conditions:
+        query += " WHERE " + " AND ".join(conditions)
+
+    with connect_db() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(query, params)
+            result = cursor.fetchall()
+            return [row['name'] for row in result]
 
 
 def get_country_id(name):
