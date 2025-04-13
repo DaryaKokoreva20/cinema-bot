@@ -117,15 +117,12 @@ def get_filtered_films(filters):
     return films
 
 
-def film_country(country):
-    country_id = None
-    with open(r'C:\Users\Даша\Desktop\2 курс\pythonProject\films_country бд.csv', newline='', encoding='cp1251') as csvfile:
-        reader = csv.DictReader(csvfile, delimiter=';')
-        for row in reader:
-            if row['country_name'] == country:
-                country_id = int(row['id'])
-                break
-    return country_id
+def get_country_id(name):
+    with connect_db() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT id FROM countries WHERE name = %s", (name,))
+            row = cursor.fetchone()
+            return row['id'] if row else None
 
 
 def film_age_limit(age_limit):
