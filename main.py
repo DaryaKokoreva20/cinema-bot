@@ -177,25 +177,19 @@ def get_director_id(surname):
             return row['id'] if row else None
 
 
-def film_actor(actor):
-    if actor is None:
-        return []
-    actor_id = None
-    film_id = []
-    actor = actor.strip().lower()
-    with open(r'C:\Users\Даша\Desktop\2 курс\pythonProject\actors бд.csv', newline='', encoding='cp1251') as csvfile:
-        reader = csv.DictReader(csvfile, delimiter=';')
-        for row in reader:
-            if row['actor_surname'] and row['actor_surname'].strip().lower() == actor:
-                actor_id = int(row['id'])
-                break
-    if actor_id is not None:
-        with open(r'C:\Users\Даша\Desktop\2 курс\pythonProject\cast_films бд.csv', newline='', encoding='cp1251') as cast_file:
-            cast_reader = csv.DictReader(cast_file, delimiter=';')
-            for cast_row in cast_reader:
-                if int(cast_row['id_actor']) == actor_id:
-                    film_id.append(int(cast_row['id_film']))
-    return film_id
+def get_actor_film_ids(surname):
+    surname = surname.strip().lower()
+    with connect_db() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT id FROM actors WHERE LOWER(surname) = %s", (surname,))
+            actor_row = cursor.fetchone()
+            if not actor_row:
+                return []
+            actor_id = actor_row['id']
+
+            cursor.execute("SELECT id_film FROM cast_films WHERE id_actor = %s", (actor_id,))
+            result = cursor.fetchall()
+            return [row['id_film'] for row in result]
 
 
 def get_genre_film_ids(genre):
