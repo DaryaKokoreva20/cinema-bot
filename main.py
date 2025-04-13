@@ -133,18 +133,13 @@ def get_age_limit_id(label):
             return row['id'] if row else None
 
 
-def film_director(director):
-    if director is None:
-        return None
-    director_id = None
-    director = director.strip().lower()
-    with open(r'C:\Users\Даша\Desktop\2 курс\pythonProject\director бд.csv', newline='', encoding='cp1251') as csvfile:
-        reader = csv.DictReader(csvfile, delimiter=';')
-        for row in reader:
-            if row['director_surname'] and row['director_surname'].strip().lower() == director:
-                director_id = int(row['id'])
-                break
-    return director_id
+def get_director_id(surname):
+    surname = surname.strip().lower()
+    with connect_db() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT id FROM directors WHERE LOWER(surname) = %s", (surname,))
+            row = cursor.fetchone()
+            return row['id'] if row else None
 
 
 def film_actor(actor):
