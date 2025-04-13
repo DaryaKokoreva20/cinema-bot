@@ -198,22 +198,18 @@ def film_actor(actor):
     return film_id
 
 
-def film_genre(genre):
-    genre_id = None
-    film_id = []
-    with open(r'C:\Users\Даша\Desktop\2 курс\pythonProject\genre бд.csv', newline='', encoding='cp1251') as csvfile:
-        reader = csv.DictReader(csvfile, delimiter=';')
-        for row in reader:
-            if row['genre_name'] == genre:
-                genre_id = int(row['id'])
-                break
-    if genre_id is not None:
-        with open(r'C:\Users\Даша\Desktop\2 курс\pythonProject\genre_films бд.csv', newline='', encoding='cp1251') as genre_file:
-            genre_reader = csv.DictReader(genre_file, delimiter=';')
-            for genre_row in genre_reader:
-                if int(genre_row['id_genre']) == genre_id:
-                    film_id.append(int(genre_row['id_film']))
-    return film_id
+def get_genre_film_ids(genre):
+    with connect_db() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT id FROM genres WHERE name = %s", (genre,))
+            genre_row = cursor.fetchone()
+            if not genre_row:
+                return []
+            genre_id = genre_row['id']
+
+            cursor.execute("SELECT id_film FROM genre_films WHERE id_genre = %s", (genre_id,))
+            result = cursor.fetchall()
+            return [row['id_film'] for row in result]
 
 
 def matches_filters(row, filters):
