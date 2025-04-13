@@ -7,11 +7,23 @@ import pandas as pd
 from rapidfuzz import process
 from dotenv import load_dotenv
 import os
+import pymysql
+
 
 load_dotenv()
-bot_key = os.getenv('BOT_KEY')
 
-bot = telebot.TeleBot(bot_key)
+bot = telebot.TeleBot(os.getenv('BOT_KEY'))
+
+def connect_db():
+    return pymysql.connect(
+        host='localhost',
+        user='root',
+        password=os.getenv('DB_PASSWORD'),
+        database='cinema-bot',
+        charset='utf8mb4',
+        cursorclass=pymysql.cursors.DictCursor
+    )
+
 
 line_count = sum(1 for line in open(r'C:\Users\Даша\Desktop\2 курс\pythonProject\films бд.csv', encoding='cp1251')) - 1
 
