@@ -125,15 +125,12 @@ def get_country_id(name):
             return row['id'] if row else None
 
 
-def film_age_limit(age_limit):
-    age_limit_id = None
-    with open(r'C:\Users\Даша\Desktop\2 курс\pythonProject\age_limit бд.csv', newline='', encoding='cp1251') as csvfile:
-        reader = csv.DictReader(csvfile, delimiter=';')
-        for row in reader:
-            if row['limit'] == age_limit:
-                age_limit_id = int(row['id'])
-                break
-    return age_limit_id
+def get_age_limit_id(label):
+    with connect_db() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT id FROM age_limits WHERE label = %s", (label,))
+            row = cursor.fetchone()
+            return row['id'] if row else None
 
 
 def film_director(director):
