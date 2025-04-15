@@ -214,6 +214,13 @@ if not os.path.isfile(ratings_file_path): # Проверяем, существу
         writer.writerow(['user_id', 'film_id', 'rating'])  # Заголовок
 
 
+def get_film_id_by_name(connection, film_name):
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT id FROM films WHERE name = %s", (film_name,))
+        result = cursor.fetchone()
+        return result['id'] if result else None
+
+
 def save_user_rating(connection, user_id, film_id, rating):
     with connection.cursor() as cursor:
         cursor.execute("""
