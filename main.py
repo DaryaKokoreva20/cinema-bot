@@ -13,6 +13,7 @@ import pymysql
 load_dotenv()
 
 bot = telebot.TeleBot(os.getenv('BOT_KEY'))
+db_password = os.getenv('DB_PASSWORD')
 
 def connect_db():
     return pymysql.connect(
@@ -286,43 +287,53 @@ def get_rating_random(message, film_name):
 
 
 def recommend_films(user_id):
-    df = pd.read_csv(ratings_file_path, encoding='cp1251')  # Читаем файл с оценками
-    user_film_matrix = df.pivot_table(index='user_id', columns='film_id', values='rating')  # Создаем матрицу пользователь-фильм
-    # Заполняем пропущенные значения нулями
-    user_film_matrix = user_film_matrix.fillna(0)
-    # Вычисляем средние оценки для фильмов, которых пользователь еще не оценил
+    import pymysql
+    import pandas as pd
+
+    conn = pymysql.connect(
+        host='localhost',
+        user='root',
+        password=db_password,
+        db='cinema_bot',
+        charset='utf8mb4',
+        cursorclass=pymysql.cursors.DictCursor
+    )
+
+    query = "SELECT user_id, film_id, rating FROM user_ratings"
+    df = pd.read_sql(query, conn)
+
+    if df.empty:
+        return []
+
+    user_film_matrix = df.pivot_table(index='user_id', columns='film_id', values='rating').fillna(0)
+
     try:
-        user_ratings = user_film_matrix.loc[user_id] # выбирает все оценки конкретного пользователя
+        user_ratings = user_film_matrix.loc[user_id]
         films_not_watched = user_ratings[user_ratings == 0].index.tolist()
     except KeyError:
-        # Если пользователь еще не оценил ни один фильм
         films_not_watched = user_film_matrix.columns.tolist()
 
-    # Убираем пользователей с нулевым стандартным отклонениему (у них все оценки одинаковы)
     user_stddev = user_film_matrix.std(axis=1)
     user_film_matrix = user_film_matrix[user_stddev != 0]
 
     if user_id not in user_film_matrix.index:
-        return []  # Если у пользователя нет оценок, возвращаем пустой список
-    # Считается корреляция между пользователем и всеми другими пользователями, чтобы найти тех, кто оценивает фильмы аналогично
+        return []
+
     similar_users = user_film_matrix.corrwith(user_film_matrix.loc[user_id], axis=1).dropna()
     similar_users = similar_users[similar_users > 0].sort_values(ascending=False)
-    # Для каждого похожего пользователя и каждого фильма, который пользователь еще не оценил, рассчитывается взвешенная оценка, основанная на оценках похожих пользователей и их схожести с данным пользователем.
+
     film_recommendations = {}
     for user, similarity in similar_users.items():
-        user_ratings = user_film_matrix.loc[user]
-        for film_id, rating in user_ratings.items():
+        ratings = user_film_matrix.loc[user]
+        for film_id, rating in ratings.items():
             if user_film_matrix.at[user_id, film_id] == 0 and film_id in films_not_watched:
-                if film_id not in film_recommendations:
-                    film_recommendations[film_id] = 0
-                film_recommendations[film_id] += similarity * rating
+                film_recommendations[film_id] = film_recommendations.get(film_id, 0) + similarity * rating
 
     if not film_recommendations:
         return []
-    # Фильмы сортируются по взвешенной оценке, и возвращаются топ-5 рекомендаций.
-    recommended_films = sorted(film_recommendations.items(), key=lambda x: x[1], reverse=True)
-    recommended_films = [film_id for film_id, score in recommended_films]
-    return recommended_films[:5]
+
+    recommended = sorted(film_recommendations.items(), key=lambda x: x[1], reverse=True)
+    return [film_id for film_id, _ in recommended][:5]
 
 
 @bot.message_handler(commands=['start'])
