@@ -8,12 +8,20 @@ from rapidfuzz import process
 from dotenv import load_dotenv
 import os
 import pymysql
+import datetime
 
 
 load_dotenv()
 
 bot = telebot.TeleBot(os.getenv('BOT_KEY'))
 db_password = os.getenv('DB_PASSWORD')
+
+
+def log_error(message):
+    with open('log.txt', 'a', encoding='utf-8') as f:
+        now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        f.write(f"[{now}] {message}\n")
+
 
 def connect_db():
     return pymysql.connect(
