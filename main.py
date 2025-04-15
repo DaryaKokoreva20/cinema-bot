@@ -252,8 +252,12 @@ def get_rating(message, film_name):
     else:
         try:
             rating = int(message.text)
-            if rating >= 1 and rating <= 5:
-                save_user_rating(message.from_user.id, film_name, rating)
+            if 1 <= rating <= 5:
+                film_id = get_film_id_by_name(connection, film_name)
+                if film_id:
+                    save_user_rating(connection, message.from_user.id, film_id, rating)
+                else:
+                    bot.send_message(message.chat.id, 'Фильм не найден в базе данных.')
             else:
                 bot.send_message(message.chat.id, 'Пожалуйста, введите число от 1 до 5.')
                 rate_film(message, film_name)
