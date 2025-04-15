@@ -206,47 +206,6 @@ def get_genre_film_ids(genre):
             return [row['id_film'] for row in result]
 
 
-def matches_filters(row, filters):
-    for filter_type, value in filters.items():
-        if filter_type == 'Год':
-            year = int(row['film_year'])
-            if not (value[0] <= year <= value[1]):
-                return False
-        elif filter_type == 'Длительность':
-            duration = int(row['duration'])
-            if not (value[0] <= duration <= value[1]):
-                return False
-        elif filter_type == 'Рейтинг':
-            rating = row['rating']
-            if len(rating) == 3:
-                rating = int(row['rating'][0]) + int(row['rating'][2]) / 10
-            else:
-                rating = int(row['rating'])
-            if not (value[0] <= rating <= value[1]):
-                return False
-        elif filter_type == 'Страна':
-            country_id = film_country(value)
-            if not(int(row['id_country']) == country_id):
-                return False
-        elif filter_type == 'Возрастное ограничение':
-            age_limit_id = film_age_limit(value)
-            if not(int(row['id_age_limit']) == age_limit_id):
-                return False
-        elif filter_type == 'Режиссер':
-            director_id = film_director(value)
-            if not(int(row['id_director']) == director_id):
-                return False
-        elif filter_type == 'Актеры':
-            actor_film_ids = film_actor(value)
-            if int(row['id']) not in actor_film_ids:
-                return False
-        elif filter_type == 'Жанр':
-            genre_film_ids = film_genre(value)
-            if int(row['id']) not in genre_film_ids:
-                return False
-    return True
-
-
 ratings_file_path = r'C:\Users\Даша\Desktop\2 курс\pythonProject\user_ratings.csv'
 if not os.path.isfile(ratings_file_path): # Проверяем, существует ли файл с оценками, если нет - создаем его
     with open(ratings_file_path, 'w', newline='', encoding='cp1251') as file:
