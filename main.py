@@ -214,10 +214,14 @@ if not os.path.isfile(ratings_file_path): # Проверяем, существу
         writer.writerow(['user_id', 'film_id', 'rating'])  # Заголовок
 
 
-def save_user_rating(user_id, film_name, rating):
-    with open(ratings_file_path, 'a', newline='', encoding='cp1251') as file: # a - откроет для добавления нового содержимого
-        writer = csv.writer(file)
-        writer.writerow([user_id, film_name, rating])
+def save_user_rating(connection, user_id, film_id, rating):
+    with connection.cursor() as cursor:
+        cursor.execute("""
+            INSERT INTO user_ratings (user_id, id_film, rating)
+            VALUES (%s, %s, %s)
+            ON DUPLICATE KEY UPDATE rating = VALUES(rating)
+        """, (user_id, film_id, rating))
+    connection.commit()
 
 
 def rate_film(message, film_name):
