@@ -283,22 +283,25 @@ def rate_random_film(message, film_name):
 
 def get_rating_random(message, film_name):
     if message.text == 'Не хочу оценивать':
-        pass
         bot.send_message(message.chat.id, 'Спасибо! Вы не оценили фильм.')
         show_main_menu(message)
     else:
         try:
             rating = int(message.text)
-            if rating >= 1 and rating <= 5:
-                save_user_rating(message.from_user.id, film_name, rating)
-                bot.send_message(message.chat.id, 'Спасибо за вашу оценку!')
+            if 1 <= rating <= 5:
+                film_id = get_film_id_by_name(connection, film_name)
+                if film_id:
+                    save_user_rating(connection, message.from_user.id, film_id, rating)
+                    bot.send_message(message.chat.id, 'Спасибо за вашу оценку!')
+                else:
+                    bot.send_message(message.chat.id, 'Фильм не найден в базе данных.')
                 show_main_menu(message)
             else:
                 bot.send_message(message.chat.id, 'Пожалуйста, введите число от 1 до 5.')
-                rate_film(message, film_name)
+                rate_random_film(message, film_name)
         except ValueError:
             bot.send_message(message.chat.id, 'Пожалуйста, введите число от 1 до 5.')
-            rate_film(message, film_name)
+            rate_random_film(message, film_name)
 
 
 def recommend_films(user_id):
