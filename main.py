@@ -230,13 +230,15 @@ def get_film_id_by_name(connection, film_name):
 
 
 def save_user_rating(connection, user_id, film_id, rating):
-    with connection.cursor() as cursor:
-        cursor.execute("""
-            INSERT INTO user_ratings (user_id, id_film, rating)
-            VALUES (%s, %s, %s)
-            ON DUPLICATE KEY UPDATE rating = VALUES(rating)
-        """, (user_id, film_id, rating))
-    connection.commit()
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                INSERT INTO ratings (user_id, id_film, rating)
+                VALUES (%s, %s, %s)
+            """, (user_id, film_id, rating))
+        connection.commit()
+    except Exception as e:
+        log_error(f"Ошибка при сохранении оценки: user_id={user_id}, film_id={film_id}, rating={rating}, ошибка: {str(e)}")
 
 
 def rate_film(message, film_name):
