@@ -514,19 +514,6 @@ def save_feedback(message):
     show_main_menu(message)
 
 
-def get_recommendations():
-    recommendations = []
-    try:
-        with open(r'C:\Users\Даша\Desktop\2 курс\pythonProject\recommendations.csv', newline='', encoding='cp1251') as csvfile:
-            reader = csv.reader(csvfile, delimiter=';')
-            for row in reader:
-                if row:  # Проверка, что строка не пустая
-                    recommendations.append(row[0])
-    except Exception as e:
-        print(f"Ошибка при чтении файла: {e}")
-    return recommendations
-
-
 @bot.message_handler(func=lambda message: True)
 def handle_message(message):
     log_error(f"Пользователь {message.from_user.id} ввёл неизвестную команду: {message.text}", level='INFO')
