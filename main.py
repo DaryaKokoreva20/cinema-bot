@@ -24,14 +24,18 @@ def log_error(message, level='ERROR'):
 
 
 def connect_db():
-    return pymysql.connect(
-        host='localhost',
-        user='root',
-        password=os.getenv('DB_PASSWORD'),
-        database='cinema-bot',
-        charset='utf8mb4',
-        cursorclass=pymysql.cursors.DictCursor
-    )
+    try:
+        return pymysql.connect(
+            host='localhost',
+            user='root',
+            password=os.getenv('DB_PASSWORD'),
+            database='cinema-bot',
+            charset='utf8mb4',
+            cursorclass=pymysql.cursors.DictCursor
+        )
+    except pymysql.MySQLError as e:
+        log_error(f"Ошибка подключения к базе данных: {str(e)}")
+        return None
 
 
 line_count = sum(1 for line in open(r'C:\Users\Даша\Desktop\2 курс\pythonProject\films бд.csv', encoding='cp1251')) - 1
