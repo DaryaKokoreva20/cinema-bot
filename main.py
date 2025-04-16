@@ -262,12 +262,13 @@ def get_rating(message, film_name):
     try:
         rating = int(message.text)
         if 1 <= rating <= 5:
-            film_id = get_film_id_by_name(connection, film_name)
-            if film_id:
-                save_user_rating(connection, message.from_user.id, film_id, rating)
-            else:
-                bot.send_message(message.chat.id, 'Фильм не найден в базе данных.')
-                log_error(f"Фильм не найден в базе данных: '{film_name}'")
+            with connect_db() as connection:
+                film_id = get_film_id_by_name(connection, film_name)
+                if film_id:
+                    save_user_rating(connection, message.from_user.id, film_id, rating)
+                else:
+                    bot.send_message(message.chat.id, 'Фильм не найден в базе данных.')
+                    log_error(f"Фильм не найден в базе данных: '{film_name}'")
         else:
             bot.send_message(message.chat.id, 'Пожалуйста, введите число от 1 до 5.')
             rate_film(message, film_name)
