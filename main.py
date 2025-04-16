@@ -546,7 +546,8 @@ def filter_choice(message):
 
 def on_click_filter(message):
     if message.text == 'Назад':
-        selected_filters.popitem()  # Удалить последний добавленный фильтр
+        if selected_filters:
+            selected_filters.popitem() # Удалить последний добавленный фильтр
         filter_choice(message)  # Вернуться к выбору фильтра
         return
     filter_type = message.text
@@ -713,7 +714,11 @@ def on_click_age_limit(call):
 
 def on_click_director(message):
     user_input = message.text.strip()
-    with connect_db() as conn:
+    conn = connect_db()
+    if not conn:
+        bot.send_message(message.chat.id, 'Ошибка подключения к базе данных. Попробуйте позже.')
+        return
+    with conn:
         with conn.cursor() as cursor:
             cursor.execute("SELECT surname FROM directors")
             director_surnames = [row['surname'] for row in cursor.fetchall()]
@@ -728,7 +733,11 @@ def on_click_director(message):
 
 def on_click_actor(message):
     user_input = message.text.strip()
-    with connect_db() as conn:
+    conn = connect_db()
+    if not conn:
+        bot.send_message(message.chat.id, 'Ошибка подключения к базе данных. Попробуйте позже.')
+        return
+    with conn:
         with conn.cursor() as cursor:
             cursor.execute("SELECT surname FROM actors")
             actor_surnames = [row['surname'] for row in cursor.fetchall()]
