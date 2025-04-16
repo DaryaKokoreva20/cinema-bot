@@ -66,9 +66,11 @@ def on_click_show_films(message):
     if films:
         bot.send_message(message.chat.id, "Вот фильмы по выбранным критериям:")
         show_next_films(message, films, 0)
+        log_error(f"Пользователь {message.from_user.id} получил подборку фильмов по фильтрам: {selected_filters}", level='INFO')
     else:
         bot.send_message(message.chat.id, "Фильмов по выбранным критериям не найдено.")
         show_main_menu(message)
+        log_error(f"Пользователь {message.from_user.id} не получил ни одного фильма по фильтрам: {selected_filters}", level='INFO')
     selected_filters.clear()
 
 
@@ -288,6 +290,7 @@ def save_user_rating(connection, user_id, film_id, rating):
                 ON DUPLICATE KEY UPDATE rating = VALUES(rating)
             """, (user_id, film_id, rating))
         connection.commit()
+        log_error(f"Оценка сохранена: user_id={user_id}, film_id={film_id}, rating={rating}", level='INFO')
     except Exception as e:
         log_error(f"Ошибка при сохранении оценки: user_id={user_id}, film_id={film_id}, rating={rating}, ошибка: {str(e)}")
 
@@ -345,6 +348,7 @@ def get_rating(message, film_name):
             bot.send_message(message.chat.id, 'Пожалуйста, введите число от 1 до 5.')
             rate_film(message, film_name)
     except ValueError:
+        log_error(f"Неверный ввод от пользователя {message.from_user.id}: {message.text}", level='WARNING')
         bot.send_message(message.chat.id, 'Пожалуйста, введите число от 1 до 5.')
         bot.register_next_step_handler(message, lambda msg: get_rating(msg, film_name))
 
@@ -428,9 +432,12 @@ def recommend_films(user_id):
                 format_strings = ','.join(['%s'] * len(top_ids))
                 cursor.execute(f"SELECT name FROM films WHERE id IN ({format_strings})", top_ids)
                 rows = cursor.fetchall()
+
                 if not rows:
                     log_error(f"Рекомендованные фильмы не найдены в таблице films: {top_ids}")
                     return []
+            
+                log_error(f"Пользователю {user_id} выданы рекомендации: {top_ids}", level='INFO')
                 return [row['name'] for row in rows]
     except Exception as e:
         log_error(f"Ошибка при формировании рекомендаций: {str(e)}")
@@ -450,6 +457,7 @@ def start(message):
     markup.row(btn5)
     bot.send_message(message.chat.id, f'Привет, {message.from_user.username}! Выбери, что ты хочешь сделать 👇🏻', reply_markup=markup)
     bot.register_next_step_handler(message, on_click)
+    log_error(f"Пользователь {message.from_user.id} начал сессию", level='INFO')
 
 
 def on_click(message):
@@ -501,6 +509,7 @@ def save_feedback(message):
     feedback = message.text
     with open('feedback.txt', 'a', encoding='utf-8') as f:
         f.write(f"{message.from_user.username}: {feedback}\n")
+    log_error(f"Получен отзыв от {message.from_user.username}: {feedback}", level='INFO')
     bot.send_message(message.chat.id, 'Спасибо за ваш отзыв!')
     show_main_menu(message)
 
@@ -520,6 +529,7 @@ def get_recommendations():
 
 @bot.message_handler(func=lambda message: True)
 def handle_message(message):
+    log_error(f"Пользователь {message.from_user.id} ввёл неизвестную команду: {message.text}", level='INFO')
     bot.send_message(message.chat.id, 'Неизвестная команда. Пожалуйста, выберите одну из предложенных опций.')
     show_main_menu(message)
 
