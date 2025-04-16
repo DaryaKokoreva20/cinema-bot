@@ -165,6 +165,13 @@ def get_filtered_films(filters):
         genre_film_ids = get_genre_film_ids(filters['Жанр'])
         film_ids = set(genre_film_ids) if film_ids is None else film_ids & set(genre_film_ids)
 
+    if film_ids is not None:
+        if not film_ids:
+            return []
+        placeholders = ', '.join(['%s'] * len(film_ids))
+        conditions.append(f"id IN ({placeholders})")
+        params.extend(film_ids)
+
     if conditions:
         query += " WHERE " + " AND ".join(conditions)
 
