@@ -267,12 +267,24 @@ def get_rating_markup():
 
 
 def rate_film(message, film_name):
+    if film_name is None:
+        bot.send_message(message.chat.id, 'Фильм не найден, повторите попытку позже.')
+        log_error("Передан None в rate_film()")
+        show_main_menu(message)
+        return
+
     markup = get_rating_markup()
     bot.send_message(message.chat.id, f'Оцените фильм "{film_name}" от 1 до 5:', reply_markup=markup)
     bot.register_next_step_handler(message, lambda msg: get_rating(msg, film_name))
 
 
 def rate_random_film(message, film_name):
+    if film_name is None:
+        bot.send_message(message.chat.id, 'Фильм не найден, повторите попытку позже.')
+        log_error("Передан None в rate_random_film()")
+        show_main_menu(message)
+        return
+
     markup = get_rating_markup()
     bot.send_message(message.chat.id, 'Оцените фильм от 1 до 5:', reply_markup=markup)
     bot.register_next_step_handler(message, lambda msg: get_rating_random(msg, film_name))
