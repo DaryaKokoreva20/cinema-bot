@@ -235,19 +235,24 @@ def save_user_rating(connection, user_id, film_id, rating):
         log_error(f"Ошибка при сохранении оценки: user_id={user_id}, film_id={film_id}, rating={rating}, ошибка: {str(e)}")
 
 
-def rate_film(message, film_name):
+def get_rating_markup():
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
-    btn1 = types.KeyboardButton('1')
-    btn2 = types.KeyboardButton('2')
-    btn3 = types.KeyboardButton('3')
-    btn4 = types.KeyboardButton('4')
-    btn5 = types.KeyboardButton('5')
-    btn6 = types.KeyboardButton('Не хочу оценивать')
-    markup.row(btn1, btn2, btn3)
-    markup.row(btn4, btn5)
-    markup.row(btn6)
+    markup.row(*(types.KeyboardButton(str(i)) for i in range(1, 4)))
+    markup.row(*(types.KeyboardButton(str(i)) for i in range(4, 6)))
+    markup.row(types.KeyboardButton('Не хочу оценивать'))
+    return markup
+
+
+def rate_film(message, film_name):
+    markup = get_rating_markup()
     bot.send_message(message.chat.id, f'Оцените фильм "{film_name}" от 1 до 5:', reply_markup=markup)
     bot.register_next_step_handler(message, lambda msg: get_rating(msg, film_name))
+
+
+def rate_random_film(message, film_name):
+    markup = get_rating_markup()
+    bot.send_message(message.chat.id, 'Оцените фильм от 1 до 5:', reply_markup=markup)
+    bot.register_next_step_handler(message, lambda msg: get_rating_random(msg, film_name))
 
 
 def get_rating(message, film_name):
@@ -269,21 +274,6 @@ def get_rating(message, film_name):
     except ValueError:
         bot.send_message(message.chat.id, 'Пожалуйста, введите число от 1 до 5.')
         rate_film(message, film_name)
-
-
-def rate_random_film(message, film_name):
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
-    btn1 = types.KeyboardButton('1')
-    btn2 = types.KeyboardButton('2')
-    btn3 = types.KeyboardButton('3')
-    btn4 = types.KeyboardButton('4')
-    btn5 = types.KeyboardButton('5')
-    btn6 = types.KeyboardButton('Не хочу оценивать')
-    markup.row(btn1, btn2, btn3)
-    markup.row(btn4, btn5)
-    markup.row(btn6)
-    bot.send_message(message.chat.id, 'Оцените фильм от 1 до 5:', reply_markup=markup)
-    bot.register_next_step_handler(message, lambda msg: get_rating_random(msg, film_name))
 
 
 def get_rating_random(message, film_name):
