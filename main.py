@@ -151,6 +151,18 @@ def get_filtered_films(filters):
             conditions.append("id_director = %s")
             params.append(director_id)
 
+    if 'Актеры' in filters:
+        actor_ids = get_actor_film_ids(filters['Актеры'])
+        if actor_ids:
+            conditions.append("id IN (%s)" % ','.join(['%s'] * len(actor_ids)))
+            params.extend(actor_ids)
+
+    if 'Жанр' in filters:
+        genre_ids = get_genre_film_ids(filters['Жанр'])
+        if genre_ids:
+            conditions.append("id IN (%s)" % ','.join(['%s'] * len(genre_ids)))
+            params.extend(genre_ids)
+
     if conditions:
         query += " WHERE " + " AND ".join(conditions)
 
