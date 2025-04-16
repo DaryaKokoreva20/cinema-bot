@@ -58,20 +58,23 @@ def correct_spelling(name, choices):
     return None
 
 
-selected_filters = {}
+user_selected_filters = {}
 
 
 def on_click_show_films(message):
-    films = get_filtered_films(selected_filters)
+    user_id = message.from_user.id
+    user_filters = user_selected_filters.get(user_id, {})
+    films = get_filtered_films(user_filters)
+
     if films:
         bot.send_message(message.chat.id, "Вот фильмы по выбранным критериям:")
         show_next_films(message, films, 0)
-        log_error(f"Пользователь {message.from_user.id} получил подборку фильмов по фильтрам: {selected_filters}", level='INFO')
+        log_error(f"Пользователь {message.from_user.id} получил подборку фильмов по фильтрам: {user_filters}", level='INFO')
     else:
         bot.send_message(message.chat.id, "Фильмов по выбранным критериям не найдено.")
         show_main_menu(message)
-        log_error(f"Пользователь {message.from_user.id} не получил ни одного фильма по фильтрам: {selected_filters}", level='INFO')
-    selected_filters.clear()
+        log_error(f"Пользователь {message.from_user.id} не получил ни одного фильма по фильтрам: {user_filters}", level='INFO')
+    user_selected_filters.pop(user_id, None)
 
 
 def show_next_films(message, films, start_index):
@@ -522,6 +525,9 @@ def handle_message(message):
 
 
 def filter_choice(message):
+    user_id = message.from_user.id
+    user_filters = user_selected_filters.setdefault(user_id, {})
+
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     btn1 = types.KeyboardButton('Год')
     btn2 = types.KeyboardButton('Возрастное ограничение')
@@ -537,22 +543,27 @@ def filter_choice(message):
     markup.row(btn4, btn5, btn6)
     markup.row(btn7, btn8, btn_back)
     markup.row(btn_done)
-    if selected_filters:
+    if user_filters:
         bot.send_message(message.chat.id, 'Выберите следующий критерий или нажмите "Показать фильмы".', reply_markup=markup)
     else:
         bot.send_message(message.chat.id, 'Выберите критерий, который важен вам при выборе фильма 👇🏻', reply_markup=markup)
+
+    user_selected_filters[user_id] = user_filters
     bot.register_next_step_handler(message, on_click_filter)
 
 
 def on_click_filter(message):
+    user_id = message.from_user.id
+    user_filters = user_selected_filters.setdefault(user_id, {})
+
     if message.text == 'Назад':
-        if selected_filters:
-            selected_filters.popitem() # Удалить последний добавленный фильтр
-        filter_choice(message)  # Вернуться к выбору фильтра
+        if user_filters:
+            user_filters.popitem()
+        filter_choice(message)
         return
     filter_type = message.text
-    if filter_type not in selected_filters:
-        selected_filters[filter_type] = None
+    if message.text not in user_filters:
+        user_filters[message.text] = None
     if message.text == 'Показать фильмы':
         on_click_show_films(message)
         return
@@ -653,6 +664,8 @@ def on_click_filter(message):
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('year_'))
 def on_click_year(call):
+    user_id = call.from_user.id
+    user_filters = user_selected_filters.setdefault(user_id, {})
     year_ranges = {
         'year_1': (0, 1949),
         'year_2': (1950, 1969),
@@ -666,12 +679,14 @@ def on_click_year(call):
         'year_10': (2020, 2024),
     }
     year1, year2 = year_ranges[call.data]
-    selected_filters['Год'] = (year1, year2)
+    user_filters['Год'] = (year1, year2)
     filter_choice(call.message)
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('duration_'))
 def on_click_duration(call):
+    user_id = call.from_user.id
+    user_filters = user_selected_filters.setdefault(user_id, {})
     duration_ranges = {
         'duration_1': (0, 59),
         'duration_2': (60, 89),
@@ -679,12 +694,14 @@ def on_click_duration(call):
         'duration_4': (120, 500),
     }
     dur1, dur2 = duration_ranges[call.data]
-    selected_filters['Длительность'] = (dur1, dur2)
+    user_filters['Длительность'] = (dur1, dur2)
     filter_choice(call.message)
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('rating_'))
 def on_click_rating(call):
+    user_id = call.from_user.id
+    user_filters = user_selected_filters.setdefault(user_id, {})
     rating_ranges = {
         'rating_1': (0, 2.9),
         'rating_2': (3.0, 4.9),
@@ -694,25 +711,31 @@ def on_click_rating(call):
         'rating_6': (9.0, 10.0),
     }
     rating1, rating2 = rating_ranges[call.data]
-    selected_filters['Рейтинг'] = (rating1, rating2)
+    user_filters['Рейтинг'] = (rating1, rating2)
     filter_choice(call.message)
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('country_'))
 def on_click_country(call):
+    user_id = call.from_user.id
+    user_filters = user_selected_filters.setdefault(user_id, {})
     country = call.data.split('_')[1]
-    selected_filters['Страна'] = country
+    user_filters['Страна'] = country
     filter_choice(call.message)
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('limit_'))
 def on_click_age_limit(call):
+    auser_id = call.from_user.id
+    user_filters = user_selected_filters.setdefault(user_id, {})
     age_limit = call.data.split('_')[1]
-    selected_filters['Возрастное ограничение'] = age_limit
+    user_filters['Возрастное ограничение'] = age_limit
     filter_choice(call.message)
 
 
 def on_click_director(message):
+    user_id = message.from_user.id
+    user_filters = user_selected_filters.setdefault(user_id, {})
     user_input = message.text.strip()
     conn = connect_db()
     if not conn:
@@ -724,7 +747,7 @@ def on_click_director(message):
             director_surnames = [row['surname'] for row in cursor.fetchall()]
     corrected = correct_spelling(user_input, director_surnames)
     if corrected:
-        selected_filters['Режиссер'] = corrected
+        user_filters['Режиссер'] = corrected
         filter_choice(message)
     else:
         bot.send_message(message.chat.id, "Режиссёр не найден. Попробуйте ещё раз.")
@@ -732,6 +755,8 @@ def on_click_director(message):
 
 
 def on_click_actor(message):
+    user_id = message.from_user.id
+    user_filters = user_selected_filters.setdefault(user_id, {})
     user_input = message.text.strip()
     conn = connect_db()
     if not conn:
@@ -743,7 +768,7 @@ def on_click_actor(message):
             actor_surnames = [row['surname'] for row in cursor.fetchall()]
     corrected = correct_spelling(user_input, actor_surnames)
     if corrected:
-        selected_filters['Актеры'] = corrected
+        user_filters['Актеры'] = corrected
         filter_choice(message)
     else:
         bot.send_message(message.chat.id, "Актёр не найден. Попробуйте ещё раз.")
@@ -752,8 +777,10 @@ def on_click_actor(message):
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('genre_'))
 def on_click_genre(call):
+    guser_id = call.from_user.id
+    user_filters = user_selected_filters.setdefault(user_id, {})
     genre = call.data.split('_')[1]
-    selected_filters['Жанр'] = genre
+    user_filters['Жанр'] = genre
     filter_choice(call.message)
 
 
