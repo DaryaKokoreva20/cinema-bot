@@ -421,10 +421,16 @@ def recommend_films(user_id):
             recommended_ids = sorted(film_recommendations.items(), key=lambda x: x[1], reverse=True)
             top_ids = [film_id for film_id, _ in recommended_ids[:5]]
 
+            if not top_ids:
+                return []
+
             with conn.cursor() as cursor:
                 format_strings = ','.join(['%s'] * len(top_ids))
                 cursor.execute(f"SELECT name FROM films WHERE id IN ({format_strings})", top_ids)
                 rows = cursor.fetchall()
+                if not rows:
+                    log_error(f"Рекомендованные фильмы не найдены в таблице films: {top_ids}")
+                    return []
                 return [row['name'] for row in rows]
     except Exception as e:
         log_error(f"Ошибка при формировании рекомендаций: {str(e)}")
