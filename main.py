@@ -236,6 +236,15 @@ def get_film_id_by_name(connection, film_name):
         return result['id'] if result else None
 
 
+def get_film_ids_by_names(names, connection):
+    if not names:
+        return []
+    with connection.cursor() as cursor:
+        format_strings = ','.join(['%s'] * len(names))
+        cursor.execute(f"SELECT name, id FROM films WHERE name IN ({format_strings})", names)
+        return [(row['name'], row['id']) for row in cursor.fetchall()]
+
+
 def save_user_rating(connection, user_id, film_id, rating):
     try:
         with connection.cursor() as cursor:
