@@ -168,9 +168,12 @@ def get_filtered_films(filters):
     if conditions:
         query += " WHERE " + " AND ".join(conditions)
 
-    with connect_db() as conn:
-        with conn.cursor() as cursor:
-            cursor.execute(query, params)
+    conn = connect_db()
+    if not conn:
+        bot.send_message(message.chat.id, 'Ошибка подключения к базе данных. Попробуйте позже.')
+        return
+    with conn:
+        cursor.execute(query, params)
             result = cursor.fetchall()
             films = [row['name'] for row in result]
             if film_ids is not None:
@@ -180,7 +183,11 @@ def get_filtered_films(filters):
 
 
 def get_country_id(name):
-    with connect_db() as conn:
+    conn = connect_db()
+    if not conn:
+        bot.send_message(message.chat.id, 'Ошибка подключения к базе данных. Попробуйте позже.')
+        return
+    with conn:
         with conn.cursor() as cursor:
             cursor.execute("SELECT id FROM countries WHERE name = %s", (name,))
             row = cursor.fetchone()
@@ -188,7 +195,11 @@ def get_country_id(name):
 
 
 def get_age_limit_id(label):
-    with connect_db() as conn:
+    conn = connect_db()
+    if not conn:
+        bot.send_message(message.chat.id, 'Ошибка подключения к базе данных. Попробуйте позже.')
+        return
+    with conn:
         with conn.cursor() as cursor:
             cursor.execute("SELECT id FROM age_limits WHERE label = %s", (label,))
             row = cursor.fetchone()
@@ -197,7 +208,11 @@ def get_age_limit_id(label):
 
 def get_director_id(surname):
     surname = surname.strip().lower()
-    with connect_db() as conn:
+    conn = connect_db()
+    if not conn:
+        bot.send_message(message.chat.id, 'Ошибка подключения к базе данных. Попробуйте позже.')
+        return
+    with conn:
         with conn.cursor() as cursor:
             cursor.execute("SELECT id FROM directors WHERE LOWER(surname) = %s", (surname,))
             row = cursor.fetchone()
@@ -206,7 +221,11 @@ def get_director_id(surname):
 
 def get_actor_film_ids(surname):
     surname = surname.strip().lower()
-    with connect_db() as conn:
+    conn = connect_db()
+    if not conn:
+        bot.send_message(message.chat.id, 'Ошибка подключения к базе данных. Попробуйте позже.')
+        return
+    with conn:
         with conn.cursor() as cursor:
             cursor.execute("SELECT id FROM actors WHERE LOWER(surname) = %s", (surname,))
             actor_row = cursor.fetchone()
@@ -220,7 +239,11 @@ def get_actor_film_ids(surname):
 
 
 def get_genre_film_ids(genre):
-    with connect_db() as conn:
+    conn = connect_db()
+    if not conn:
+        bot.send_message(message.chat.id, 'Ошибка подключения к базе данных. Попробуйте позже.')
+        return
+    with conn:
         with conn.cursor() as cursor:
             cursor.execute("SELECT id FROM genres WHERE name = %s", (genre,))
             genre_row = cursor.fetchone()
@@ -300,10 +323,14 @@ def get_rating(message, film_name):
     try:
         rating = int(message.text)
         if 1 <= rating <= 5:
-            with connect_db() as connection:
-                film_id = get_film_id_by_name(connection, film_name)
+            conn = connect_db()
+            if not conn:
+                bot.send_message(message.chat.id, 'Ошибка подключения к базе данных. Попробуйте позже.')
+                return
+            with conn:
+                film_id = get_film_id_by_name(conn, film_name)
                 if film_id:
-                    save_user_rating(connection, message.from_user.id, film_id, rating)
+                    save_user_rating(conn, message.from_user.id, film_id, rating)
                 else:
                     bot.send_message(message.chat.id, 'Фильм не найден в базе данных.')
                     log_error(f"Фильм не найден в базе данных: '{film_name}'")
@@ -323,10 +350,14 @@ def get_rating_random(message, film_name):
     try:
         rating = int(message.text)
         if 1 <= rating <= 5:
-            with connect_db() as connection:
-                film_id = get_film_id_by_name(connection, film_name)
+            conn = connect_db()
+            if not conn:
+                bot.send_message(message.chat.id, 'Ошибка подключения к базе данных. Попробуйте позже.')
+                return
+            with conn:
+                film_id = get_film_id_by_name(conn, film_name)
                 if film_id:
-                    save_user_rating(connection, message.from_user.id, film_id, rating)
+                    save_user_rating(conn, message.from_user.id, film_id, rating)
                     bot.send_message(message.chat.id, 'Спасибо за вашу оценку!')
                 else:
                     bot.send_message(message.chat.id, 'Фильм не найден в базе данных.')
@@ -343,7 +374,11 @@ def get_rating_random(message, film_name):
 
 def recommend_films(user_id):
     try:
-        with connect_db() as conn:
+        conn = connect_db()
+        if not conn:
+            bot.send_message(message.chat.id, 'Ошибка подключения к базе данных. Попробуйте позже.')
+            return
+        with conn:
             df = pd.read_sql("SELECT user_id, id_film, rating FROM ratings", conn)
 
             if df.empty:
