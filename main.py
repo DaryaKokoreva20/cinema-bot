@@ -235,6 +235,7 @@ def save_user_rating(connection, user_id, film_id, rating):
             cursor.execute("""
                 INSERT INTO ratings (user_id, id_film, rating)
                 VALUES (%s, %s, %s)
+                ON DUPLICATE KEY UPDATE rating = VALUES(rating)
             """, (user_id, film_id, rating))
         connection.commit()
     except Exception as e:
@@ -364,7 +365,6 @@ def recommend_films(user_id):
     except Exception as e:
         log_error(f"Ошибка при формировании рекомендаций: {str(e)}")
         return []
-
 
 
 @bot.message_handler(commands=['start'])

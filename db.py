@@ -192,6 +192,23 @@ def import_films(connection, csv_path):
     connection.commit()
 
 
+def add_unique_constraint():
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                ALTER TABLE ratings
+                ADD CONSTRAINT uniq_user_film UNIQUE (user_id, id_film);
+            """)
+        connection.commit()
+        print("Ограничение UNIQUE успешно добавлено.")
+    except pymysql.err.InternalError as e:
+        print("Ошибка при добавлении ограничения:", e)
+    finally:
+        connection.close()
+
+add_unique_constraint()
+
+
 # import_countries(connection, 'C:/Users/Даша/Desktop/Учеба/2 курс/pythonProject/countries.csv')
 # import_age_limits(connection, 'C:/Users/Даша/Desktop/Учеба/2 курс/pythonProject/age_limits.csv')
 # import_genres(connection, 'C:/Users/Даша/Desktop/Учеба/2 курс/pythonProject/genres.csv')
@@ -199,7 +216,7 @@ def import_films(connection, csv_path):
 # import_actors(connection, 'C:/Users/Даша/Desktop/Учеба/2 курс/pythonProject/actors.csv')
 # import_films(connection, 'C:/Users/Даша/Desktop/Учеба/2 курс/pythonProject/films.csv')
 # import_genre_films(connection, 'C:/Users/Даша/Desktop/Учеба/2 курс/pythonProject/genre_films.csv')
-import_cast_films(connection, 'C:/Users/Даша/Desktop/Учеба/2 курс/pythonProject/cast_films.csv')
+# import_cast_films(connection, 'C:/Users/Даша/Desktop/Учеба/2 курс/pythonProject/cast_films.csv')
 
 
 connection.close()
