@@ -1,0 +1,45 @@
+# Виртуальное окружение
+venv/
+ENV/
+env/
+.venv/
+
+# Кэш интерпретатора Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Логи
+*.log
+errors.log
+
+# Конфигурация и переменные окружения
+.env
+*.env
+
+# Служебные файлы IDE
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Базы данных и временные файлы
+*.sqlite3
+*.db
+*.csv
+
+# Системные и скрытые файлы
+.DS_Store
+Thumbs.db
+
+# pyinstaller
+dist/
+build/
+*.spec
+
+# Юнит-тесты
+.coverage
+htmlcov/
+.tox/
+.nox/
+.pytest_cache/
