@@ -9,12 +9,29 @@ from dotenv import load_dotenv
 import os
 import pymysql
 from datetime import datetime
+import time
 
 
 load_dotenv()
 
 bot = telebot.TeleBot(os.getenv('BOT_KEY'))
 db_password = os.getenv('DB_PASSWORD')
+
+
+FILTER_TTL_SECONDS = 300 
+
+def clean_old_filters():
+    now = time.time()
+    to_delete = [uid for uid, data in user_selected_filters.items() if now - data['timestamp'] > FILTER_TTL_SECONDS]
+    for uid in to_delete:
+        del user_selected_filters[uid]
+
+
+def is_filter_expired(user_id):
+    data = user_selected_filters.get(user_id)
+    if not data:
+        return False
+    return time.time() - data.get('timestamp', 0) > FILTER_TTL_SECONDS
 
 
 def log_error(message, level='ERROR'):
@@ -60,8 +77,16 @@ user_selected_filters = {}
 
 
 def on_click_show_films(message):
-    user_id = message.from_user.id
-    user_filters = user_selected_filters.get(user_id, {})
+    clean_old_filters() 
+    user_id = call.from_user.id
+
+    if is_filter_expired(user_id):
+        user_selected_filters.pop(user_id, None)
+        bot.send_message(message.chat.id, 'Кажется, вы немного задержались с выбором. Чтобы всё сработало корректно, начнём подбор фильмов заново 😊')
+        return start(message)
+        
+    user_filters = user_selected_filters.setdefault(user_id, {})
+    
     films = get_filtered_films(user_filters)
 
     if films:
@@ -447,6 +472,7 @@ def recommend_films(user_id):
 
 @bot.message_handler(commands=['start'])
 def start(message):
+    clean_old_filters()
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     btn1 = types.KeyboardButton('Подборка фильмов')
     btn2 = types.KeyboardButton('Случайный фильм')
@@ -462,6 +488,7 @@ def start(message):
 
 
 def on_click(message):
+    clean_old_filters() 
     if message.text == 'Подборка фильмов':
         filter_choice(message)
     elif message.text == 'Случайный фильм':
@@ -517,13 +544,21 @@ def save_feedback(message):
 
 @bot.message_handler(func=lambda message: True)
 def handle_message(message):
+    clean_old_filters() 
     log_error(f"Пользователь {message.from_user.id} ввёл неизвестную команду: {message.text}", level='INFO')
     bot.send_message(message.chat.id, 'Неизвестная команда. Пожалуйста, выберите одну из предложенных опций.')
     show_main_menu(message)
 
 
 def filter_choice(message):
+    clean_old_filters()
     user_id = message.from_user.id
+
+    if is_filter_expired(user_id):
+        user_selected_filters.pop(user_id, None)
+        bot.send_message(message.chat.id, 'Кажется, вы немного задержались с выбором. Чтобы всё сработало корректно, начнём подбор фильмов заново 😊')
+        return start(message)
+
     user_filters = user_selected_filters.setdefault(user_id, {})
 
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
@@ -551,7 +586,14 @@ def filter_choice(message):
 
 
 def on_click_filter(message):
+    clean_old_filters() 
     user_id = message.from_user.id
+
+    if is_filter_expired(user_id):
+        user_selected_filters.pop(user_id, None)
+        bot.send_message(message.chat.id, 'Кажется, вы немного задержались с выбором. Чтобы всё сработало корректно, начнём подбор фильмов заново 😊')
+        return start(message)
+
     user_filters = user_selected_filters.setdefault(user_id, {})
 
     if message.text == 'Назад':
@@ -662,7 +704,14 @@ def on_click_filter(message):
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('year_'))
 def on_click_year(call):
+    clean_old_filters() 
     user_id = call.from_user.id
+
+    if is_filter_expired(user_id):
+        user_selected_filters.pop(user_id, None)
+        bot.send_message(message.chat.id, 'Кажется, вы немного задержались с выбором. Чтобы всё сработало корректно, начнём подбор фильмов заново 😊')
+        return start(message)
+
     user_filters = user_selected_filters.setdefault(user_id, {})
     year_ranges = {
         'year_1': (0, 1949),
@@ -683,8 +732,16 @@ def on_click_year(call):
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('duration_'))
 def on_click_duration(call):
+    clean_old_filters() 
     user_id = call.from_user.id
+
+    if is_filter_expired(user_id):
+        user_selected_filters.pop(user_id, None)
+        bot.send_message(message.chat.id, 'Кажется, вы немного задержались с выбором. Чтобы всё сработало корректно, начнём подбор фильмов заново 😊')
+        return start(message)
+        
     user_filters = user_selected_filters.setdefault(user_id, {})
+
     duration_ranges = {
         'duration_1': (0, 59),
         'duration_2': (60, 89),
@@ -698,8 +755,16 @@ def on_click_duration(call):
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('rating_'))
 def on_click_rating(call):
+    clean_old_filters() 
     user_id = call.from_user.id
+
+    if is_filter_expired(user_id):
+        user_selected_filters.pop(user_id, None)
+        bot.send_message(message.chat.id, 'Кажется, вы немного задержались с выбором. Чтобы всё сработало корректно, начнём подбор фильмов заново 😊')
+        return start(message)
+        
     user_filters = user_selected_filters.setdefault(user_id, {})
+    
     rating_ranges = {
         'rating_1': (0, 2.9),
         'rating_2': (3.0, 4.9),
@@ -715,8 +780,16 @@ def on_click_rating(call):
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('country_'))
 def on_click_country(call):
+    clean_old_filters() 
     user_id = call.from_user.id
+
+    if is_filter_expired(user_id):
+        user_selected_filters.pop(user_id, None)
+        bot.send_message(message.chat.id, 'Кажется, вы немного задержались с выбором. Чтобы всё сработало корректно, начнём подбор фильмов заново 😊')
+        return start(message)
+        
     user_filters = user_selected_filters.setdefault(user_id, {})
+    
     country = call.data.split('_')[1]
     user_filters['Страна'] = country
     filter_choice(call.message)
@@ -724,16 +797,32 @@ def on_click_country(call):
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('limit_'))
 def on_click_age_limit(call):
+    clean_old_filters() 
     user_id = call.from_user.id
+
+    if is_filter_expired(user_id):
+        user_selected_filters.pop(user_id, None)
+        bot.send_message(message.chat.id, 'Кажется, вы немного задержались с выбором. Чтобы всё сработало корректно, начнём подбор фильмов заново 😊')
+        return start(message)
+        
     user_filters = user_selected_filters.setdefault(user_id, {})
+    
     age_limit = call.data.split('_')[1]
     user_filters['Возрастное ограничение'] = age_limit
     filter_choice(call.message)
 
 
 def on_click_director(message):
-    user_id = message.from_user.id
+    clean_old_filters() 
+    user_id = call.from_user.id
+
+    if is_filter_expired(user_id):
+        user_selected_filters.pop(user_id, None)
+        bot.send_message(message.chat.id, 'Кажется, вы немного задержались с выбором. Чтобы всё сработало корректно, начнём подбор фильмов заново 😊')
+        return start(message)
+        
     user_filters = user_selected_filters.setdefault(user_id, {})
+    
     user_input = message.text.strip()
     conn = connect_db()
     if not conn:
@@ -753,8 +842,16 @@ def on_click_director(message):
 
 
 def on_click_actor(message):
-    user_id = message.from_user.id
+    clean_old_filters() 
+    user_id = call.from_user.id
+
+    if is_filter_expired(user_id):
+        user_selected_filters.pop(user_id, None)
+        bot.send_message(message.chat.id, 'Кажется, вы немного задержались с выбором. Чтобы всё сработало корректно, начнём подбор фильмов заново 😊')
+        return start(message)
+        
     user_filters = user_selected_filters.setdefault(user_id, {})
+    
     user_input = message.text.strip()
     conn = connect_db()
     if not conn:
@@ -775,8 +872,16 @@ def on_click_actor(message):
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('genre_'))
 def on_click_genre(call):
-    guser_id = call.from_user.id
+    clean_old_filters() 
+    user_id = call.from_user.id
+
+    if is_filter_expired(user_id):
+        user_selected_filters.pop(user_id, None)
+        bot.send_message(message.chat.id, 'Кажется, вы немного задержались с выбором. Чтобы всё сработало корректно, начнём подбор фильмов заново 😊')
+        return start(message)
+        
     user_filters = user_selected_filters.setdefault(user_id, {})
+    
     genre = call.data.split('_')[1]
     user_filters['Жанр'] = genre
     filter_choice(call.message)
