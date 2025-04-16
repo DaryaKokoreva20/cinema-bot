@@ -34,6 +34,15 @@ def is_filter_expired(user_id):
     return time.time() - data.get('timestamp', 0) > FILTER_TTL_SECONDS
 
 
+def check_expired_and_reset(user_id, chat_id, message_obj):
+    if is_filter_expired(user_id):
+        user_selected_filters.pop(user_id, None)
+        bot.send_message(chat_id, 'Кажется, вы немного задержались с выбором. Чтобы всё сработало корректно, начнём подбор фильмов заново 😊')
+        start(message_obj)
+        return True
+    return False
+
+
 def log_error(message, level='ERROR'):
     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     with open('errors.log', 'a', encoding='utf-8') as f:
@@ -78,13 +87,9 @@ user_selected_filters = {}
 
 def on_click_show_films(message):
     clean_old_filters() 
-    user_id = call.from_user.id
-
-    if is_filter_expired(user_id):
-        user_selected_filters.pop(user_id, None)
-        bot.send_message(message.chat.id, 'Кажется, вы немного задержались с выбором. Чтобы всё сработало корректно, начнём подбор фильмов заново 😊')
-        return start(message)
-        
+    user_id = message.from_user.id
+    if check_expired_and_reset(user_id, message.chat.id, message):
+        return
     user_filters = user_selected_filters.setdefault(user_id, {})
     
     films = get_filtered_films(user_filters)
@@ -553,12 +558,8 @@ def handle_message(message):
 def filter_choice(message):
     clean_old_filters()
     user_id = message.from_user.id
-
-    if is_filter_expired(user_id):
-        user_selected_filters.pop(user_id, None)
-        bot.send_message(message.chat.id, 'Кажется, вы немного задержались с выбором. Чтобы всё сработало корректно, начнём подбор фильмов заново 😊')
-        return start(message)
-
+    if check_expired_and_reset(user_id, message.chat.id, message):
+        return
     user_filters = user_selected_filters.setdefault(user_id, {})
 
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
@@ -588,12 +589,8 @@ def filter_choice(message):
 def on_click_filter(message):
     clean_old_filters() 
     user_id = message.from_user.id
-
-    if is_filter_expired(user_id):
-        user_selected_filters.pop(user_id, None)
-        bot.send_message(message.chat.id, 'Кажется, вы немного задержались с выбором. Чтобы всё сработало корректно, начнём подбор фильмов заново 😊')
-        return start(message)
-
+    if check_expired_and_reset(user_id, message.chat.id, message):
+        return
     user_filters = user_selected_filters.setdefault(user_id, {})
 
     if message.text == 'Назад':
@@ -705,14 +702,11 @@ def on_click_filter(message):
 @bot.callback_query_handler(func=lambda call: call.data.startswith('year_'))
 def on_click_year(call):
     clean_old_filters() 
-    user_id = call.from_user.id
-
-    if is_filter_expired(user_id):
-        user_selected_filters.pop(user_id, None)
-        bot.send_message(message.chat.id, 'Кажется, вы немного задержались с выбором. Чтобы всё сработало корректно, начнём подбор фильмов заново 😊')
-        return start(message)
-
+    user_id = message.from_user.id
+    if check_expired_and_reset(user_id, message.chat.id, message):
+        return
     user_filters = user_selected_filters.setdefault(user_id, {})
+
     year_ranges = {
         'year_1': (0, 1949),
         'year_2': (1950, 1969),
@@ -733,13 +727,9 @@ def on_click_year(call):
 @bot.callback_query_handler(func=lambda call: call.data.startswith('duration_'))
 def on_click_duration(call):
     clean_old_filters() 
-    user_id = call.from_user.id
-
-    if is_filter_expired(user_id):
-        user_selected_filters.pop(user_id, None)
-        bot.send_message(message.chat.id, 'Кажется, вы немного задержались с выбором. Чтобы всё сработало корректно, начнём подбор фильмов заново 😊')
-        return start(message)
-        
+    user_id = message.from_user.id
+    if check_expired_and_reset(user_id, message.chat.id, message):
+        return
     user_filters = user_selected_filters.setdefault(user_id, {})
 
     duration_ranges = {
@@ -756,13 +746,9 @@ def on_click_duration(call):
 @bot.callback_query_handler(func=lambda call: call.data.startswith('rating_'))
 def on_click_rating(call):
     clean_old_filters() 
-    user_id = call.from_user.id
-
-    if is_filter_expired(user_id):
-        user_selected_filters.pop(user_id, None)
-        bot.send_message(message.chat.id, 'Кажется, вы немного задержались с выбором. Чтобы всё сработало корректно, начнём подбор фильмов заново 😊')
-        return start(message)
-        
+    user_id = message.from_user.id
+    if check_expired_and_reset(user_id, message.chat.id, message):
+        return
     user_filters = user_selected_filters.setdefault(user_id, {})
     
     rating_ranges = {
@@ -781,13 +767,9 @@ def on_click_rating(call):
 @bot.callback_query_handler(func=lambda call: call.data.startswith('country_'))
 def on_click_country(call):
     clean_old_filters() 
-    user_id = call.from_user.id
-
-    if is_filter_expired(user_id):
-        user_selected_filters.pop(user_id, None)
-        bot.send_message(message.chat.id, 'Кажется, вы немного задержались с выбором. Чтобы всё сработало корректно, начнём подбор фильмов заново 😊')
-        return start(message)
-        
+    user_id = message.from_user.id
+    if check_expired_and_reset(user_id, message.chat.id, message):
+        return
     user_filters = user_selected_filters.setdefault(user_id, {})
     
     country = call.data.split('_')[1]
@@ -798,13 +780,9 @@ def on_click_country(call):
 @bot.callback_query_handler(func=lambda call: call.data.startswith('limit_'))
 def on_click_age_limit(call):
     clean_old_filters() 
-    user_id = call.from_user.id
-
-    if is_filter_expired(user_id):
-        user_selected_filters.pop(user_id, None)
-        bot.send_message(message.chat.id, 'Кажется, вы немного задержались с выбором. Чтобы всё сработало корректно, начнём подбор фильмов заново 😊')
-        return start(message)
-        
+    user_id = message.from_user.id
+    if check_expired_and_reset(user_id, message.chat.id, message):
+        return
     user_filters = user_selected_filters.setdefault(user_id, {})
     
     age_limit = call.data.split('_')[1]
@@ -814,13 +792,9 @@ def on_click_age_limit(call):
 
 def on_click_director(message):
     clean_old_filters() 
-    user_id = call.from_user.id
-
-    if is_filter_expired(user_id):
-        user_selected_filters.pop(user_id, None)
-        bot.send_message(message.chat.id, 'Кажется, вы немного задержались с выбором. Чтобы всё сработало корректно, начнём подбор фильмов заново 😊')
-        return start(message)
-        
+    user_id = message.from_user.id
+    if check_expired_and_reset(user_id, message.chat.id, message):
+        return
     user_filters = user_selected_filters.setdefault(user_id, {})
     
     user_input = message.text.strip()
@@ -843,13 +817,9 @@ def on_click_director(message):
 
 def on_click_actor(message):
     clean_old_filters() 
-    user_id = call.from_user.id
-
-    if is_filter_expired(user_id):
-        user_selected_filters.pop(user_id, None)
-        bot.send_message(message.chat.id, 'Кажется, вы немного задержались с выбором. Чтобы всё сработало корректно, начнём подбор фильмов заново 😊')
-        return start(message)
-        
+    user_id = message.from_user.id
+    if check_expired_and_reset(user_id, message.chat.id, message):
+        return
     user_filters = user_selected_filters.setdefault(user_id, {})
     
     user_input = message.text.strip()
@@ -873,13 +843,9 @@ def on_click_actor(message):
 @bot.callback_query_handler(func=lambda call: call.data.startswith('genre_'))
 def on_click_genre(call):
     clean_old_filters() 
-    user_id = call.from_user.id
-
-    if is_filter_expired(user_id):
-        user_selected_filters.pop(user_id, None)
-        bot.send_message(message.chat.id, 'Кажется, вы немного задержались с выбором. Чтобы всё сработало корректно, начнём подбор фильмов заново 😊')
-        return start(message)
-        
+    user_id = message.from_user.id
+    if check_expired_and_reset(user_id, message.chat.id, message):
+        return
     user_filters = user_selected_filters.setdefault(user_id, {})
     
     genre = call.data.split('_')[1]
