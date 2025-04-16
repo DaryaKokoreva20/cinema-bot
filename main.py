@@ -151,17 +151,15 @@ def get_filtered_films(filters):
             conditions.append("id_director = %s")
             params.append(director_id)
 
+    film_ids = None
+
     if 'Актеры' in filters:
-        actor_ids = get_actor_film_ids(filters['Актеры'])
-        if actor_ids:
-            conditions.append("id IN (%s)" % ','.join(['%s'] * len(actor_ids)))
-            params.extend(actor_ids)
+        actor_film_ids = get_actor_film_ids(filters['Актеры'])
+        film_ids = set(actor_film_ids) if film_ids is None else film_ids & set(actor_film_ids)
 
     if 'Жанр' in filters:
-        genre_ids = get_genre_film_ids(filters['Жанр'])
-        if genre_ids:
-            conditions.append("id IN (%s)" % ','.join(['%s'] * len(genre_ids)))
-            params.extend(genre_ids)
+        genre_film_ids = get_genre_film_ids(filters['Жанр'])
+        film_ids = set(genre_film_ids) if film_ids is None else film_ids & set(genre_film_ids)
 
     if conditions:
         query += " WHERE " + " AND ".join(conditions)
@@ -170,7 +168,11 @@ def get_filtered_films(filters):
         with conn.cursor() as cursor:
             cursor.execute(query, params)
             result = cursor.fetchall()
-            return [row['name'] for row in result]
+            films = [row['name'] for row in result]
+            if film_ids is not None:
+                with_ids = get_film_ids_by_names(films, conn)
+                films = [name for name, fid in with_ids if fid in film_ids]
+            return films
 
 
 def get_country_id(name):
