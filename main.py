@@ -346,7 +346,7 @@ def get_rating(message, film_name):
             rate_film(message, film_name)
     except ValueError:
         bot.send_message(message.chat.id, 'Пожалуйста, введите число от 1 до 5.')
-        rate_film(message, film_name)
+        bot.register_next_step_handler(message, lambda msg: get_rating(msg, film_name))
 
 
 def get_rating_random(message, film_name):
@@ -374,7 +374,7 @@ def get_rating_random(message, film_name):
             rate_random_film(message, film_name)
     except ValueError:
         bot.send_message(message.chat.id, 'Пожалуйста, введите число от 1 до 5.')
-        rate_random_film(message, film_name)
+        bot.register_next_step_handler(message, lambda msg: get_rating_random(msg, film_name))
     finally:
         show_main_menu(message)
 
