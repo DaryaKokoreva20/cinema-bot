@@ -215,13 +215,6 @@ def get_genre_film_ids(genre):
             return [row['id_film'] for row in result]
 
 
-ratings_file_path = r'C:\Users\Даша\Desktop\2 курс\pythonProject\user_ratings.csv'
-if not os.path.isfile(ratings_file_path): # Проверяем, существует ли файл с оценками, если нет - создаем его
-    with open(ratings_file_path, 'w', newline='', encoding='cp1251') as file:
-        writer = csv.writer(file)
-        writer.writerow(['user_id', 'film_id', 'rating'])  # Заголовок
-
-
 def get_film_id_by_name(connection, film_name):
     with connection.cursor() as cursor:
         cursor.execute("SELECT id FROM films WHERE name = %s", (film_name,))
