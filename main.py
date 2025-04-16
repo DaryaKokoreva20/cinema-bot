@@ -183,15 +183,15 @@ def get_filtered_films(filters):
     conn = connect_db()
     if not conn:
         bot.send_message(message.chat.id, 'Ошибка подключения к базе данных. Попробуйте позже.')
-        return
+        return []
     with conn.cursor() as cursor:
         cursor.execute(query, params)
-            result = cursor.fetchall()
-            films = [row['name'] for row in result]
-            if film_ids is not None:
-                with_ids = get_film_ids_by_names(films, conn)
-                films = [name for name, fid in with_ids if fid in film_ids]
-            return films
+        result = cursor.fetchall()
+        films = [row['name'] for row in result]
+        if film_ids is not None:
+            with_ids = get_film_ids_by_names(films, conn)
+            films = [name for name, fid in with_ids if fid in film_ids]
+        return films
 
 
 def get_country_id(name):
@@ -726,7 +726,7 @@ def on_click_country(call):
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('limit_'))
 def on_click_age_limit(call):
-    auser_id = call.from_user.id
+    user_id = call.from_user.id
     user_filters = user_selected_filters.setdefault(user_id, {})
     age_limit = call.data.split('_')[1]
     user_filters['Возрастное ограничение'] = age_limit
