@@ -393,8 +393,12 @@ def on_click(message):
         filter_choice(message)
     elif message.text == 'Случайный фильм':
         random_film = rand_film_name()
-        bot.send_message(message.chat.id, f"Вот ваш случайный фильм: {random_film}")
-        rate_random_film(message, random_film)
+        if random_film:
+            bot.send_message(message.chat.id, f"Вот ваш случайный фильм: {random_film}")
+            rate_random_film(message, random_film)
+        else:
+            bot.send_message(message.chat.id, "Не удалось выбрать случайный фильм. Попробуйте позже.")
+            log_error("Не удалось выбрать случайный фильм: rand_film_name() вернул None")
     elif message.text == 'Рекомендации':
         user_id = message.from_user.id
         recommended_films = recommend_films(user_id)
