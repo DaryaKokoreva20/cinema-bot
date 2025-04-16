@@ -27,6 +27,11 @@ def clean_old_filters():
         del user_selected_filters[uid]
 
 
+def update_filter_timestamp(user_id):
+    if user_id in user_selected_filters:
+        user_selected_filters[user_id]['timestamp'] = time.time()
+
+
 def is_filter_expired(user_id):
     data = user_selected_filters.get(user_id)
     if not data:
@@ -91,6 +96,7 @@ def on_click_show_films(message):
     if check_expired_and_reset(user_id, message.chat.id, message):
         return
     user_filters = user_selected_filters.setdefault(user_id, {})
+    update_filter_timestamp(user_id)
     
     films = get_filtered_films(user_filters)
 
@@ -517,6 +523,7 @@ def on_click(message):
         bot.send_message(message.chat.id, 'Напишите ваш отзыв и отправьте его нам.')
         bot.register_next_step_handler(message, save_feedback)
     elif message.text == 'Завершить работу':
+        user_selected_filters.pop(message.from_user.id, None)
         hide_keyboard = types.ReplyKeyboardRemove()
         bot.send_message(message.chat.id, "До скорых встреч!", reply_markup=hide_keyboard)
     else:
@@ -561,6 +568,7 @@ def filter_choice(message):
     if check_expired_and_reset(user_id, message.chat.id, message):
         return
     user_filters = user_selected_filters.setdefault(user_id, {})
+    update_filter_timestamp(user_id)
 
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     btn1 = types.KeyboardButton('Год')
@@ -592,6 +600,7 @@ def on_click_filter(message):
     if check_expired_and_reset(user_id, message.chat.id, message):
         return
     user_filters = user_selected_filters.setdefault(user_id, {})
+    update_filter_timestamp(user_id)
 
     if message.text == 'Назад':
         if user_filters:
@@ -706,6 +715,7 @@ def on_click_year(call):
     if check_expired_and_reset(user_id, message.chat.id, message):
         return
     user_filters = user_selected_filters.setdefault(user_id, {})
+    update_filter_timestamp(user_id)
 
     year_ranges = {
         'year_1': (0, 1949),
@@ -731,6 +741,7 @@ def on_click_duration(call):
     if check_expired_and_reset(user_id, message.chat.id, message):
         return
     user_filters = user_selected_filters.setdefault(user_id, {})
+    update_filter_timestamp(user_id)
 
     duration_ranges = {
         'duration_1': (0, 59),
@@ -750,7 +761,8 @@ def on_click_rating(call):
     if check_expired_and_reset(user_id, message.chat.id, message):
         return
     user_filters = user_selected_filters.setdefault(user_id, {})
-    
+    update_filter_timestamp(user_id)
+
     rating_ranges = {
         'rating_1': (0, 2.9),
         'rating_2': (3.0, 4.9),
@@ -771,6 +783,7 @@ def on_click_country(call):
     if check_expired_and_reset(user_id, message.chat.id, message):
         return
     user_filters = user_selected_filters.setdefault(user_id, {})
+    update_filter_timestamp(user_id)
     
     country = call.data.split('_')[1]
     user_filters['Страна'] = country
@@ -784,6 +797,7 @@ def on_click_age_limit(call):
     if check_expired_and_reset(user_id, message.chat.id, message):
         return
     user_filters = user_selected_filters.setdefault(user_id, {})
+    update_filter_timestamp(user_id)
     
     age_limit = call.data.split('_')[1]
     user_filters['Возрастное ограничение'] = age_limit
@@ -796,6 +810,7 @@ def on_click_director(message):
     if check_expired_and_reset(user_id, message.chat.id, message):
         return
     user_filters = user_selected_filters.setdefault(user_id, {})
+    update_filter_timestamp(user_id)
     
     user_input = message.text.strip()
     conn = connect_db()
@@ -821,6 +836,7 @@ def on_click_actor(message):
     if check_expired_and_reset(user_id, message.chat.id, message):
         return
     user_filters = user_selected_filters.setdefault(user_id, {})
+    update_filter_timestamp(user_id)
     
     user_input = message.text.strip()
     conn = connect_db()
@@ -847,6 +863,7 @@ def on_click_genre(call):
     if check_expired_and_reset(user_id, message.chat.id, message):
         return
     user_filters = user_selected_filters.setdefault(user_id, {})
+    update_filter_timestamp(user_id)
     
     genre = call.data.split('_')[1]
     user_filters['Жанр'] = genre
