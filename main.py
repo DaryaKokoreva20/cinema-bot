@@ -25,6 +25,7 @@ def clean_old_filters():
     to_delete = [uid for uid, data in user_selected_filters.items() if now - data['timestamp'] > FILTER_TTL_SECONDS]
     for uid in to_delete:
         del user_selected_filters[uid]
+        log_error(f"Удалён просроченный фильтр пользователя {uid}", level='INFO')
 
 
 def update_filter_timestamp(user_id):
