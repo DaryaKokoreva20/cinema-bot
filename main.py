@@ -38,17 +38,15 @@ def connect_db():
         return None
 
 
-line_count = sum(1 for line in open(r'C:\Users\Даша\Desktop\2 курс\pythonProject\films бд.csv', encoding='cp1251')) - 1
-
-
 def rand_film_name():
-    rand_num_of_film = random.randint(1, line_count)
-    with open(r'C:\Users\Даша\Desktop\2 курс\pythonProject\films бд.csv', newline='', encoding='cp1251') as csvfile:
-        reader = csv.reader(csvfile, delimiter=';')
-        next(reader)
-        for _ in range(rand_num_of_film):
-            row = next(reader)
-        return row[1]
+    conn = connect_db()
+    if not conn:
+        bot.send_message(message.chat.id, 'Ошибка подключения к базе данных. Попробуйте позже.')
+        return None
+    with conn.cursor() as cursor:
+        cursor.execute("SELECT name FROM films ORDER BY RAND() LIMIT 1")
+        result = cursor.fetchone()
+        return result['name'] if result else None
 
 
 def correct_spelling(name, choices):
