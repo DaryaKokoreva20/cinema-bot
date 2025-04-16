@@ -181,7 +181,7 @@ def get_filtered_films(filters):
     if not conn:
         bot.send_message(message.chat.id, 'Ошибка подключения к базе данных. Попробуйте позже.')
         return
-    with conn:
+    with conn.cursor() as cursor:
         cursor.execute(query, params)
             result = cursor.fetchall()
             films = [row['name'] for row in result]
@@ -712,15 +712,33 @@ def on_click_age_limit(call):
 
 
 def on_click_director(message):
-    director = message.text
-    selected_filters['Режиссер'] = director
-    filter_choice(message)
+    user_input = message.text.strip()
+    with connect_db() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT surname FROM directors")
+            director_surnames = [row['surname'] for row in cursor.fetchall()]
+    corrected = correct_spelling(user_input, director_surnames)
+    if corrected:
+        selected_filters['Режиссер'] = corrected
+        filter_choice(message)
+    else:
+        bot.send_message(message.chat.id, "Режиссёр не найден. Попробуйте ещё раз.")
+        bot.register_next_step_handler(message, on_click_director)
 
 
 def on_click_actor(message):
-    actor = message.text
-    selected_filters['Актеры'] = actor
-    filter_choice(message)
+    user_input = message.text.strip()
+    with connect_db() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT surname FROM actors")
+            actor_surnames = [row['surname'] for row in cursor.fetchall()]
+    corrected = correct_spelling(user_input, actor_surnames)
+    if corrected:
+        selected_filters['Актеры'] = corrected
+        filter_choice(message)
+    else:
+        bot.send_message(message.chat.id, "Актёр не найден. Попробуйте ещё раз.")
+        bot.register_next_step_handler(message, on_click_actor)
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('genre_'))
