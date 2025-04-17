@@ -1,7 +1,5 @@
 import telebot
 from telebot import types
-import csv
-import random
 import os
 import pandas as pd
 from rapidfuzz import process
@@ -73,7 +71,6 @@ def connect_db():
 def rand_film_name():
     conn = connect_db()
     if not conn:
-        bot.send_message(message.chat.id, 'Ошибка подключения к базе данных. Попробуйте позже.')
         return None
     with conn.cursor() as cursor:
         cursor.execute("SELECT name FROM films ORDER BY RAND() LIMIT 1")
@@ -217,8 +214,7 @@ def get_filtered_films(filters):
 
     conn = connect_db()
     if not conn:
-        bot.send_message(message.chat.id, 'Ошибка подключения к базе данных. Попробуйте позже.')
-        return []
+        return None
     with conn.cursor() as cursor:
         cursor.execute(query, params)
         result = cursor.fetchall()
@@ -232,8 +228,7 @@ def get_filtered_films(filters):
 def get_country_id(name):
     conn = connect_db()
     if not conn:
-        bot.send_message(message.chat.id, 'Ошибка подключения к базе данных. Попробуйте позже.')
-        return
+        return None
     with conn:
         with conn.cursor() as cursor:
             cursor.execute("SELECT id FROM countries WHERE name = %s", (name,))
@@ -244,8 +239,7 @@ def get_country_id(name):
 def get_age_limit_id(label):
     conn = connect_db()
     if not conn:
-        bot.send_message(message.chat.id, 'Ошибка подключения к базе данных. Попробуйте позже.')
-        return
+        return None
     with conn:
         with conn.cursor() as cursor:
             cursor.execute("SELECT id FROM age_limits WHERE label = %s", (label,))
@@ -257,8 +251,7 @@ def get_director_id(surname):
     surname = surname.strip().lower()
     conn = connect_db()
     if not conn:
-        bot.send_message(message.chat.id, 'Ошибка подключения к базе данных. Попробуйте позже.')
-        return
+        return None
     with conn:
         with conn.cursor() as cursor:
             cursor.execute("SELECT id FROM directors WHERE LOWER(surname) = %s", (surname,))
@@ -270,8 +263,7 @@ def get_actor_film_ids(surname):
     surname = surname.strip().lower()
     conn = connect_db()
     if not conn:
-        bot.send_message(message.chat.id, 'Ошибка подключения к базе данных. Попробуйте позже.')
-        return
+        return None
     with conn:
         with conn.cursor() as cursor:
             cursor.execute("SELECT id FROM actors WHERE LOWER(surname) = %s", (surname,))
@@ -288,8 +280,7 @@ def get_actor_film_ids(surname):
 def get_genre_film_ids(genre):
     conn = connect_db()
     if not conn:
-        bot.send_message(message.chat.id, 'Ошибка подключения к базе данных. Попробуйте позже.')
-        return
+        return None
     with conn:
         with conn.cursor() as cursor:
             cursor.execute("SELECT id FROM genres WHERE name = %s", (genre,))
@@ -425,8 +416,7 @@ def recommend_films(user_id):
     try:
         conn = connect_db()
         if not conn:
-            bot.send_message(message.chat.id, 'Ошибка подключения к базе данных. Попробуйте позже.')
-            return
+            return None
         with conn:
             df = pd.read_sql("SELECT user_id, id_film, rating FROM ratings", conn)
 
@@ -712,8 +702,8 @@ def on_click_filter(message):
 @bot.callback_query_handler(func=lambda call: call.data.startswith('year_'))
 def on_click_year(call):
     clean_old_filters() 
-    user_id = message.from_user.id
-    if check_expired_and_reset(user_id, message.chat.id, message):
+    user_id = call.from_user.id
+    if check_expired_and_reset(user_id, call.message.chat.id, call.message):
         return
     user_filters = user_selected_filters.setdefault(user_id, {})
     update_filter_timestamp(user_id)
@@ -738,8 +728,8 @@ def on_click_year(call):
 @bot.callback_query_handler(func=lambda call: call.data.startswith('duration_'))
 def on_click_duration(call):
     clean_old_filters() 
-    user_id = message.from_user.id
-    if check_expired_and_reset(user_id, message.chat.id, message):
+    user_id = call.from_user.id
+    if check_expired_and_reset(user_id, call.message.chat.id, call.message):
         return
     user_filters = user_selected_filters.setdefault(user_id, {})
     update_filter_timestamp(user_id)
@@ -758,8 +748,8 @@ def on_click_duration(call):
 @bot.callback_query_handler(func=lambda call: call.data.startswith('rating_'))
 def on_click_rating(call):
     clean_old_filters() 
-    user_id = message.from_user.id
-    if check_expired_and_reset(user_id, message.chat.id, message):
+    user_id = call.from_user.id
+    if check_expired_and_reset(user_id, call.message.chat.id, call.message):
         return
     user_filters = user_selected_filters.setdefault(user_id, {})
     update_filter_timestamp(user_id)
@@ -780,8 +770,8 @@ def on_click_rating(call):
 @bot.callback_query_handler(func=lambda call: call.data.startswith('country_'))
 def on_click_country(call):
     clean_old_filters() 
-    user_id = message.from_user.id
-    if check_expired_and_reset(user_id, message.chat.id, message):
+    user_id = call.from_user.id
+    if check_expired_and_reset(user_id, call.message.chat.id, call.message):
         return
     user_filters = user_selected_filters.setdefault(user_id, {})
     update_filter_timestamp(user_id)
@@ -794,8 +784,8 @@ def on_click_country(call):
 @bot.callback_query_handler(func=lambda call: call.data.startswith('limit_'))
 def on_click_age_limit(call):
     clean_old_filters() 
-    user_id = message.from_user.id
-    if check_expired_and_reset(user_id, message.chat.id, message):
+    user_id = call.from_user.id
+    if check_expired_and_reset(user_id, call.message.chat.id, call.message):
         return
     user_filters = user_selected_filters.setdefault(user_id, {})
     update_filter_timestamp(user_id)
@@ -860,8 +850,8 @@ def on_click_actor(message):
 @bot.callback_query_handler(func=lambda call: call.data.startswith('genre_'))
 def on_click_genre(call):
     clean_old_filters() 
-    user_id = message.from_user.id
-    if check_expired_and_reset(user_id, message.chat.id, message):
+    user_id = call.from_user.id
+    if check_expired_and_reset(user_id, call.message.chat.id, call.message):
         return
     user_filters = user_selected_filters.setdefault(user_id, {})
     update_filter_timestamp(user_id)
