@@ -10,7 +10,7 @@ connection = pymysql.connect(
     host='localhost',
     user='root',
     password=db_password,
-    database='cinema-bot',
+    database='cinema_bot',
     charset='utf8mb4',
     cursorclass=pymysql.cursors.DictCursor
 )

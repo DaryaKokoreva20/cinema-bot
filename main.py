@@ -59,7 +59,7 @@ def connect_db():
             host='localhost',
             user='root',
             password=os.getenv('DB_PASSWORD'),
-            database='cinema-bot',
+            database='cinema_bot',
             charset='utf8mb4',
             cursorclass=pymysql.cursors.DictCursor
         )
