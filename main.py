@@ -329,7 +329,21 @@ def get_rating_markup():
     markup.row(*(types.KeyboardButton(str(i)) for i in range(1, 4)))
     markup.row(*(types.KeyboardButton(str(i)) for i in range(4, 6)))
     markup.row(types.KeyboardButton('Не хочу оценивать'))
+    markup.row(types.KeyboardButton('Не смотрел(-а)'))
     return markup
+
+
+def mark_film_as_watched(connection, user_id, film_id):
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                INSERT IGNORE INTO watched (user_id, id_film)
+                VALUES (%s, %s)
+            """, (user_id, film_id))
+        connection.commit()
+        log_error(f"Фильм отмечен как просмотренный: user_id={user_id}, film_id={film_id}", level='INFO')
+    except Exception as e:
+        log_error(f"Ошибка при записи просмотра: user_id={user_id}, film_id={film_id}, ошибка: {str(e)}")
 
 
 def rate_film(message, film_name):
@@ -359,6 +373,10 @@ def rate_random_film(message, film_name):
 def get_rating(message, film_name):
     if message.text == 'Не хочу оценивать':
         return
+    if message.text == 'Не смотрел(-а)':
+        # bot.send_message(message.chat.id, 'Хорошо! Мы не будем сохранять информацию об этом фильме.')
+        # show_main_menu(message)
+        return
     try:
         rating = int(message.text)
         if 1 <= rating <= 5:
@@ -370,6 +388,7 @@ def get_rating(message, film_name):
                 film_id = get_film_id_by_name(conn, film_name)
                 if film_id:
                     save_user_rating(conn, message.from_user.id, film_id, rating)
+                    mark_film_as_watched(conn, message.from_user.id, film_id)
                 else:
                     bot.send_message(message.chat.id, 'Фильм не найден в базе данных.')
                     log_error(f"Фильм не найден в базе данных: '{film_name}'")
@@ -384,7 +403,11 @@ def get_rating(message, film_name):
 
 def get_rating_random(message, film_name):
     if message.text == 'Не хочу оценивать':
-        bot.send_message(message.chat.id, 'Спасибо! Вы не оценили фильм.')
+        bot.send_message(message.chat.id, 'Спасибо! (Хоть вы и не оценили фильм.)')
+        show_main_menu(message)
+        return
+    if message.text == 'Не смотрел(-а)':
+        bot.send_message(message.chat.id, 'Хорошо! Мы не будем сохранять информацию об этом фильме.')
         show_main_menu(message)
         return
     try:
@@ -398,6 +421,7 @@ def get_rating_random(message, film_name):
                 film_id = get_film_id_by_name(conn, film_name)
                 if film_id:
                     save_user_rating(conn, message.from_user.id, film_id, rating)
+                    mark_film_as_watched(conn, message.from_user.id, film_id)
                     bot.send_message(message.chat.id, 'Спасибо за вашу оценку!')
                 else:
                     bot.send_message(message.chat.id, 'Фильм не найден в базе данных.')
