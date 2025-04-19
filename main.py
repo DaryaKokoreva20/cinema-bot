@@ -314,7 +314,7 @@ def save_user_rating(connection, user_id, film_id, rating):
     try:
         with connection.cursor() as cursor:
             cursor.execute("""
-                INSERT INTO ratings (user_id, id_film, rating)
+                INSERT INTO ratings (user_id, film_id, rating)
                 VALUES (%s, %s, %s)
                 ON DUPLICATE KEY UPDATE rating = VALUES(rating)
             """, (user_id, film_id, rating))
@@ -418,12 +418,12 @@ def recommend_films(user_id):
         if not conn:
             return None
         with conn:
-            df = pd.read_sql("SELECT user_id, id_film, rating FROM ratings", conn)
+            df = pd.read_sql("SELECT user_id, film_id, rating FROM ratings", conn)
 
             if df.empty:
                 return []
 
-            user_film_matrix = df.pivot_table(index='user_id', columns='id_film', values='rating').fillna(0)
+            user_film_matrix = df.pivot_table(index='user_id', columns='film_id', values='rating').fillna(0)
 
             try:
                 user_ratings = user_film_matrix.loc[user_id]
