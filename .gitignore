@@ -43,3 +43,5 @@ htmlcov/
 .tox/
 .nox/
 .pytest_cache/
+
+feedback.txt
