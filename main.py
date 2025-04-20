@@ -160,6 +160,35 @@ def rate_next_film(message, films, index):
         show_main_menu(message)
 
 
+def filter_films_with_all_genres(genre_names):
+    if not genre_names:
+        return []
+
+    conn = connect_db()
+    if not conn:
+        return []
+
+    with conn:
+        with conn.cursor() as cursor:
+            format_strings = ','.join(['%s'] * len(genre_names))
+            cursor.execute(f"SELECT id FROM genres WHERE name IN ({format_strings})", genre_names)
+            genre_ids = [row['id'] for row in cursor.fetchall()]
+
+            if not genre_ids:
+                return []
+
+            cursor.execute(f"""
+                SELECT id_film, COUNT(DISTINCT id_genre) as genre_count
+                FROM genre_films
+                WHERE id_genre IN ({','.join(['%s'] * len(genre_ids))})
+                GROUP BY id_film
+                HAVING genre_count = %s
+            """, genre_ids + [len(genre_ids)])
+
+            result = cursor.fetchall()
+            return [row['id_film'] for row in result]
+
+
 def get_filtered_films(filters):
     query = "SELECT * FROM films"
     conditions = []
@@ -203,8 +232,16 @@ def get_filtered_films(filters):
         film_ids = set(actor_film_ids) if film_ids is None else film_ids & set(actor_film_ids)
 
     if 'Жанр' in filters:
-        genre_film_ids = get_genre_film_ids(filters['Жанр'])
+        genre_names = filters['Жанр']
+        match_all = filters.get('Жанр_тип') == 'AND'
+
+        if match_all:
+            genre_film_ids = filter_films_with_all_genres(genre_names)
+        else:
+            genre_film_ids = get_genre_film_ids(genre_names)
+
         film_ids = set(genre_film_ids) if film_ids is None else film_ids & set(genre_film_ids)
+
 
     if film_ids is not None:
         if not film_ids:
@@ -284,19 +321,28 @@ def get_actor_film_ids(surname):
             return [row['id_film'] for row in result]
 
 
-def get_genre_film_ids(genre):
+def get_genre_film_ids(genres):
+    if isinstance(genres, str):
+        genres = [genres]
+
     conn = connect_db()
     if not conn:
-        return None
+        return []
+
     with conn:
         with conn.cursor() as cursor:
-            cursor.execute("SELECT id FROM genres WHERE name = %s", (genre,))
-            genre_row = cursor.fetchone()
-            if not genre_row:
+            format_strings = ','.join(['%s'] * len(genres))
+            cursor.execute(f"SELECT id FROM genres WHERE name IN ({format_strings})", genres)
+            genre_rows = cursor.fetchall()
+            if not genre_rows:
                 return []
-            genre_id = genre_row['id']
 
-            cursor.execute("SELECT id_film FROM genre_films WHERE id_genre = %s", (genre_id,))
+            genre_ids = [row['id'] for row in genre_rows]
+
+            cursor.execute(f"""
+                SELECT id_film FROM genre_films 
+                WHERE id_genre IN ({','.join(['%s'] * len(genre_ids))})
+            """, genre_ids)
             result = cursor.fetchall()
             return [row['id_film'] for row in result]
 
@@ -948,18 +994,96 @@ def on_click_actor(message):
         bot.register_next_step_handler(message, on_click_actor)
 
 
+@bot.callback_query_handler(func=lambda call: call.data == 'genre_done')
+def on_done_genre(call):
+    user_id = call.from_user.id
+    chat_id = call.message.chat.id
+
+    selected = user_selected_filters.get(user_id, {}).get('Жанр', [])
+    if not selected:
+        bot.send_message(chat_id, "Вы не выбрали ни одного жанра.")
+        return
+
+    # Здесь спрашиваем пользователя — все жанры в одном фильме или любой из них
+    markup = types.InlineKeyboardMarkup()
+    btn_all = types.InlineKeyboardButton('Все жанры', callback_data='genre_mode_AND')
+    btn_any = types.InlineKeyboardButton('Любой жанр', callback_data='genre_mode_OR')
+    markup.add(btn_all, btn_any)
+
+    bot.send_message(chat_id, 'Искать фильмы, у которых есть все выбранные жанры, или достаточно любого из них?', reply_markup=markup)
+
+    # сохраняем выбранные жанры временно
+    user_selected_filters[user_id]['_genre_temp'] = selected
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith('genre_mode_'))
+def on_genre_mode_selected(call):
+    clean_old_filters()
+    user_id = call.from_user.id
+    chat_id = call.message.chat.id
+
+    if check_expired_and_reset(user_id, chat_id, call.message):
+        return
+
+    mode = call.data.split('_')[-1]  # AND или OR
+    user_selected_filters[user_id]['Жанр_тип'] = mode
+
+    # bot.send_message(chat_id, f"Хорошо, будем искать фильмы по принципу: {'все жанры' if mode == 'AND' else 'любой жанр'}.")
+    filter_choice(call.message)
+
+
 @bot.callback_query_handler(func=lambda call: call.data.startswith('genre_'))
 def on_click_genre(call):
-    clean_old_filters() 
-    user_id = call.from_user.id
-    if check_expired_and_reset(user_id, call.message.chat.id, call.message):
+    clean_old_filters()
+    if call.data == 'genre_done':
         return
+
+    user_id = call.from_user.id
+    chat_id = call.message.chat.id
+    message_id = call.message.message_id
+
+    if check_expired_and_reset(user_id, chat_id, call.message):
+        return
+
     user_filters = user_selected_filters.setdefault(user_id, {})
     update_filter_timestamp(user_id)
-    
-    genre = call.data.split('_')[1]
-    user_filters['Жанр'] = genre
-    filter_choice(call.message)
+
+    if 'Жанр' not in user_filters or not isinstance(user_filters['Жанр'], list):
+        user_filters['Жанр'] = []
+
+    selected_genres = user_filters['Жанр']
+    genre = call.data.split('_', 1)[1]
+
+    if genre in selected_genres:
+        selected_genres.remove(genre)
+    else:
+        selected_genres.append(genre)
+
+    all_genres = [
+        'Аниме', 'Биография', 'Боевик', 'Вестерн', 'Военный', 'Детектив',
+        'Документальный', 'Драма', 'Исторический', 'Комедия', 'Короткометражка',
+        'Криминал', 'Мелодрама', 'Музыка', 'Мультфильм', 'Мюзикл',
+        'Приключения', 'Семейный', 'Спорт', 'Триллер', 'Ужасы',
+        'Фантастика', 'Нуар', 'Фэнтези', 'Мистика'
+    ]
+
+    markup = types.InlineKeyboardMarkup(row_width=3)
+    buttons = []
+    for g in all_genres:
+        is_selected = " ✅" if g in selected_genres else ""
+        buttons.append(types.InlineKeyboardButton(f"{g}{is_selected}", callback_data=f'genre_{g}'))
+
+    for i in range(0, len(buttons), 3):
+        markup.row(*buttons[i:i+3])
+
+    markup.add(types.InlineKeyboardButton("Готово", callback_data="genre_done"))
+
+    try:
+        bot.delete_message(chat_id, message_id)
+    except Exception as e:
+        log_error(f"Ошибка при удалении сообщения: {str(e)}", level="WARNING")
+
+    bot.send_message(chat_id, "Выберите жанры или нажмите 'Готово':", reply_markup=markup)
 
 
 bot.polling(none_stop=True)
