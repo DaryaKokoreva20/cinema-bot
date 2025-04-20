@@ -79,9 +79,12 @@ def rand_film_name():
 
 
 def correct_spelling(name, choices):
-    best_match, score = process.extractOne(name, choices)
-    if score > 80:  # Порог схожести
-        return best_match
+    match = process.extractOne(name, choices)
+    if match:
+        best_match = match[0]
+        score = match[1] if isinstance(match, tuple) else getattr(match, "score", 0)
+        if score > 70:
+            return best_match
     return None
 
 
@@ -328,8 +331,10 @@ def get_rating_markup():
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
     markup.row(*(types.KeyboardButton(str(i)) for i in range(1, 4)))
     markup.row(*(types.KeyboardButton(str(i)) for i in range(4, 6)))
-    markup.row(types.KeyboardButton('Не хочу оценивать'))
-    markup.row(types.KeyboardButton('Не смотрел(-а)'))
+    markup.row(
+        types.KeyboardButton('Не хочу оценивать'),
+        types.KeyboardButton('Не смотрел(-а)')
+    )
     return markup
 
 
@@ -578,7 +583,6 @@ def handle_message(message):
 
 
 def filter_choice(message):
-    clean_old_filters()
     user_id = message.from_user.id
     if check_expired_and_reset(user_id, message.chat.id, message):
         return
@@ -600,10 +604,8 @@ def filter_choice(message):
     markup.row(btn4, btn5, btn6)
     markup.row(btn7, btn8, btn_back)
     markup.row(btn_done)
-    if user_filters:
-        bot.send_message(message.chat.id, 'Выберите следующий критерий или нажмите "Показать фильмы".', reply_markup=markup)
-    else:
-        bot.send_message(message.chat.id, 'Выберите критерий, который важен вам при выборе фильма 👇🏻', reply_markup=markup)
+    
+    bot.send_message(message.chat.id, 'Выберите критерий, который важен вам при выборе фильма 👇🏻', reply_markup=markup)
 
     user_selected_filters[user_id] = user_filters
     bot.register_next_step_handler(message, on_click_filter)
