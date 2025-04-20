@@ -687,13 +687,12 @@ def on_click_filter(message):
         bot.send_message(message.chat.id, 'Фильм с каким возрастным ограничением ты хочешь посмотреть?', reply_markup=markup_inline)
     elif message.text == 'Рейтинг':
         markup_inline = types.InlineKeyboardMarkup()
-        btn1 = types.InlineKeyboardButton('ниже 3.0', callback_data='rating_1')
-        btn2 = types.InlineKeyboardButton('3.0 - 4.9', callback_data='rating_2')
-        btn3 = types.InlineKeyboardButton('5.0 - 6.9', callback_data='rating_3')
-        btn4 = types.InlineKeyboardButton('7.0 - 7.9', callback_data='rating_4')
-        btn5 = types.InlineKeyboardButton('8.0 - 8.9', callback_data='rating_5')
-        btn6 = types.InlineKeyboardButton('9.0 - 10.0', callback_data='rating_6')
-        markup_inline.add(btn1, btn2, btn3, btn4, btn5, btn6)
+        btn1 = types.InlineKeyboardButton('до 6.0', callback_data='rating_low')
+        btn2 = types.InlineKeyboardButton('6.0+', callback_data='rating_6+')
+        btn3 = types.InlineKeyboardButton('7.0+', callback_data='rating_7+')
+        btn4 = types.InlineKeyboardButton('8.0+', callback_data='rating_8+')
+        btn5 = types.InlineKeyboardButton('9.0+', callback_data='rating_9+')
+        markup_inline.add(btn1, btn2, btn3, btn4, btn5)
         bot.reply_to(message, 'Какой рейтинг должен быть у фильма?', reply_markup=markup_inline)
     elif message.text == 'Актеры':
         bot.send_message(message.chat.id, 'Введи фамилию актера, фильм с которым хотел(-а) бы посмотреть')
@@ -789,13 +788,13 @@ def on_click_rating(call):
     update_filter_timestamp(user_id)
 
     rating_ranges = {
-        'rating_1': (0, 2.9),
-        'rating_2': (3.0, 4.9),
-        'rating_3': (5.0, 6.9),
-        'rating_4': (7.0, 7.9),
-        'rating_5': (8.0, 8.9),
-        'rating_6': (9.0, 10.0),
+        'rating_low': (0, 5.9),
+        'rating_6+': (6.0, 10.0),
+        'rating_7+': (7.0, 10.0),
+        'rating_8+': (8.0, 10.0),
+        'rating_9+': (9.0, 10.0),
     }
+
     rating1, rating2 = rating_ranges[call.data]
     user_filters['Рейтинг'] = (rating1, rating2)
     filter_choice(call.message)
