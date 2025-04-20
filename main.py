@@ -688,14 +688,15 @@ def filter_choice(message):
     btn2 = types.KeyboardButton('Жанр')
     btn4 = types.KeyboardButton('Режиссер')
     btn5 = types.KeyboardButton('Страна')
-    # btn6 = types.KeyboardButton('Длительность')
+    btn8 = types.KeyboardButton('Длительность')
     btn6 = types.KeyboardButton('Рейтинг')
     btn3 = types.KeyboardButton('Актеры')
     btn_done = types.KeyboardButton('Показать фильмы')
     btn_back = types.KeyboardButton('Отменить последний выбор')
     markup.row(btn1, btn2, btn3)
     markup.row(btn4, btn5, btn6)
-    markup.row(btn7, btn_back, btn_done)
+    markup.row(btn7, btn8, btn_back)
+    markup.row(btn_done)
     
     bot.send_message(message.chat.id, 'Выберите критерий, который важен вам при выборе фильма 👇🏻', reply_markup=markup)
 
