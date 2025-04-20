@@ -950,8 +950,8 @@ def on_click_country(call):
     markup = types.InlineKeyboardMarkup(row_width=3)
     buttons = []
     for c in all_countries:
-        is_selected = " ✅" if c in selected_countries else ""
-        buttons.append(types.InlineKeyboardButton(f"{c}{is_selected}", callback_data=f'country_{c}'))
+        is_selected = "✅ " if c in selected_countries else ""
+        buttons.append(types.InlineKeyboardButton(f"{is_selected}{c}", callback_data=f'country_{c}'))
 
     # Добавим кнопки по 3 в ряд
     for i in range(0, len(buttons), 3):
@@ -1196,8 +1196,8 @@ def on_click_genre(call):
     markup = types.InlineKeyboardMarkup(row_width=3)
     buttons = []
     for g in all_genres:
-        is_selected = " ✅" if g in selected_genres else ""
-        buttons.append(types.InlineKeyboardButton(f"{g}{is_selected}", callback_data=f'genre_{g}'))
+        is_selected = "✅ " if g in selected_genres else ""
+        buttons.append(types.InlineKeyboardButton(f"{is_selected}{g}", callback_data=f'genre_{g}'))
 
     for i in range(0, len(buttons), 3):
         markup.row(*buttons[i:i+3])
