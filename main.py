@@ -79,12 +79,21 @@ def rand_film_name():
 
 
 def correct_spelling(name, choices):
-    match = process.extractOne(name, choices)
+    # Нормализуем: нижний регистр и обрезаем пробелы
+    name = name.strip().lower()
+    choices_lower = [c.strip().lower() for c in choices]
+
+    # Получаем индекс лучшего совпадения
+    match = process.extractOne(name, choices_lower)
+
     if match:
-        best_match = match[0]
+        best_match_lower = match[0]
         score = match[1] if isinstance(match, tuple) else getattr(match, "score", 0)
         if score > 70:
-            return best_match
+            # Возвращаем оригинальное имя из списка (в оригинальной регистровке)
+            for original in choices:
+                if original.lower() == best_match_lower:
+                    return original
     return None
 
 
@@ -228,8 +237,14 @@ def get_filtered_films(filters):
     film_ids = None
 
     if 'Актеры' in filters:
-        actor_film_ids = get_actor_film_ids(filters['Актеры'])
+        actor_filter = filters['Актеры']
+        actor_names = actor_filter.get('names', [])
+        match_all = actor_filter.get('match_all', False)
+
+        actor_film_ids = get_actor_film_ids(actor_names, match_all=match_all)
+
         film_ids = set(actor_film_ids) if film_ids is None else film_ids & set(actor_film_ids)
+
 
     if 'Жанр' in filters:
         genre_names = filters['Жанр']
@@ -303,22 +318,48 @@ def get_director_id(surname):
             return row['id'] if row else None
 
 
-def get_actor_film_ids(surname):
-    surname = surname.strip().lower()
+def get_actor_film_ids(actor_names, match_all=False):
+    if isinstance(actor_names, str):
+        actor_names = [actor_names.strip().lower()]
+    else:
+        actor_names = [name.strip().lower() for name in actor_names]
+
     conn = connect_db()
     if not conn:
-        return None
+        return []
+
     with conn:
         with conn.cursor() as cursor:
-            cursor.execute("SELECT id FROM actors WHERE LOWER(surname) = %s", (surname,))
-            actor_row = cursor.fetchone()
-            if not actor_row:
-                return []
-            actor_id = actor_row['id']
+            format_strings = ','.join(['%s'] * len(actor_names))
+            cursor.execute(f"SELECT id, surname FROM actors WHERE LOWER(surname) IN ({format_strings})", actor_names)
+            actor_rows = cursor.fetchall()
 
-            cursor.execute("SELECT id_film FROM cast_films WHERE id_actor = %s", (actor_id,))
-            result = cursor.fetchall()
-            return [row['id_film'] for row in result]
+            if not actor_rows:
+                return []
+
+            actor_ids = [row['id'] for row in actor_rows]
+
+            if not actor_ids:
+                return []
+
+            cursor.execute(f"""
+                SELECT id_film, id_actor FROM cast_films
+                WHERE id_actor IN ({','.join(['%s'] * len(actor_ids))})
+            """, actor_ids)
+
+            results = cursor.fetchall()
+            if not results:
+                return []
+
+            from collections import defaultdict
+            film_to_actors = defaultdict(set)
+            for row in results:
+                film_to_actors[row['id_film']].add(row['id_actor'])
+
+            if match_all:
+                return [film_id for film_id, actor_set in film_to_actors.items() if set(actor_ids).issubset(actor_set)]
+            else:
+                return list(film_to_actors.keys())
 
 
 def get_genre_film_ids(genres):
@@ -745,8 +786,8 @@ def on_click_filter(message):
         markup_inline.add(btn1, btn2, btn3, btn4, btn5)
         bot.reply_to(message, 'Какой рейтинг должен быть у фильма?', reply_markup=markup_inline)
     elif message.text == 'Актеры':
-        bot.send_message(message.chat.id, 'Введи фамилию актера, фильм с которым хотел(-а) бы посмотреть')
-        bot.register_next_step_handler(message, on_click_actor)
+        bot.send_message(message.chat.id, 'Введи фамилии актёров через запятую')
+        bot.register_next_step_handler(message, on_actor_input)
     elif message.text == 'Жанр':
         markup_inline = types.InlineKeyboardMarkup()
         btn1 = types.InlineKeyboardButton('Аниме', callback_data='genre_Аниме')
@@ -969,29 +1010,113 @@ def on_click_director(message):
 
 
 def on_click_actor(message):
-    clean_old_filters() 
+    clean_old_filters()
     user_id = message.from_user.id
     if check_expired_and_reset(user_id, message.chat.id, message):
         return
+
     user_filters = user_selected_filters.setdefault(user_id, {})
     update_filter_timestamp(user_id)
-    
-    user_input = message.text.strip()
+
+    # Получаем список актёров
+    input_text = message.text.strip()
+    actor_names = [name.strip() for name in input_text.split(',') if name.strip()]
+
+    if not actor_names:
+        bot.send_message(message.chat.id, "Пожалуйста, введите хотя бы одного актёра через запятую.")
+        bot.register_next_step_handler(message, on_click_actor)
+        return
+
+    user_filters['Актеры'] = {
+        'names': actor_names,
+        'match_all': False  # по умолчанию
+    }
+
+    # Предлагаем выбрать режим
+    markup = types.InlineKeyboardMarkup()
+    btn_all = types.InlineKeyboardButton('Все актёры', callback_data='actors_mode_AND')
+    btn_any = types.InlineKeyboardButton('Любой актёр', callback_data='actors_mode_OR')
+    markup.add(btn_all, btn_any)
+
+    bot.send_message(message.chat.id, "Искать фильмы, у которых есть все выбранные актеры, или достаточно любого из них?", reply_markup=markup)
+
+
+def on_actor_input(message):
+    clean_old_filters()
+    user_id = message.from_user.id
+    if check_expired_and_reset(user_id, message.chat.id, message):
+        return
+
+    user_filters = user_selected_filters.setdefault(user_id, {})
+    update_filter_timestamp(user_id)
+
+    raw_input = message.text.strip()
+    actor_names_input = [name.strip() for name in raw_input.split(',') if name.strip()]
+    if not actor_names_input:
+        bot.send_message(message.chat.id, "Вы не ввели ни одного имени. Попробуйте ещё раз.")
+        bot.register_next_step_handler(message, on_actor_input)
+        return
+
+    # Загружаем все фамилии из базы
     conn = connect_db()
     if not conn:
         bot.send_message(message.chat.id, 'Ошибка подключения к базе данных. Попробуйте позже.')
         return
+
     with conn:
         with conn.cursor() as cursor:
             cursor.execute("SELECT surname FROM actors")
-            actor_surnames = [row['surname'] for row in cursor.fetchall()]
-    corrected = correct_spelling(user_input, actor_surnames)
-    if corrected:
-        user_filters['Актеры'] = corrected
-        filter_choice(message)
-    else:
-        bot.send_message(message.chat.id, "Актёр не найден. Попробуйте ещё раз.")
-        bot.register_next_step_handler(message, on_click_actor)
+            all_actor_surnames = [row['surname'] for row in cursor.fetchall()]
+
+    # Проверяем каждую введённую фамилию на корректность
+    corrected_names = []
+    not_found = []
+    for name in actor_names_input:
+        corrected = correct_spelling(name, all_actor_surnames)
+        if corrected:
+            corrected_names.append(corrected)
+        else:
+            not_found.append(name)
+
+    if not corrected_names:
+        bot.send_message(message.chat.id, "Ни одного актёра не найдено. Попробуйте ещё раз.")
+        bot.register_next_step_handler(message, on_actor_input)
+        return
+
+    if not_found:
+        bot.send_message(message.chat.id, f"Эти фамилии не распознаны: {', '.join(not_found)}. Будут проигнорированы.")
+
+    # Сохраняем корректные фамилии временно
+    user_filters['_actor_temp'] = corrected_names
+
+    markup = types.InlineKeyboardMarkup()
+    btn_all = types.InlineKeyboardButton('Все актёры', callback_data='actor_mode_AND')
+    btn_any = types.InlineKeyboardButton('Любой из них', callback_data='actor_mode_OR')
+    markup.add(btn_all, btn_any)
+
+    bot.send_message(message.chat.id, 'Искать фильмы, у которых есть все выбранные актеры, или достаточно любого из них?', reply_markup=markup)
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith('actor_mode_'))
+def on_actor_mode_selected(call):
+    clean_old_filters()
+    user_id = call.from_user.id
+    chat_id = call.message.chat.id
+
+    if check_expired_and_reset(user_id, chat_id, call.message):
+        return
+
+    mode = call.data.split('_')[-1]  # AND или OR
+    match_all = (mode == 'AND')
+    actor_names = user_selected_filters[user_id].pop('_actor_temp', [])
+
+    user_selected_filters[user_id]['Актеры'] = {
+        'names': actor_names,
+        'match_all': match_all
+    }
+
+    bot.send_message(chat_id, f"Принято. Фильмы с {'всеми' if match_all else 'любым из'} указанных актёров.")
+    filter_choice(call.message)
 
 
 @bot.callback_query_handler(func=lambda call: call.data == 'genre_done')
