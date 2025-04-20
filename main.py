@@ -178,10 +178,11 @@ def get_filtered_films(filters):
         params.extend(filters['Рейтинг'])
 
     if 'Страна' in filters:
-        country_id = get_country_id(filters['Страна'])
-        if country_id:
-            conditions.append("id_country = %s")
-            params.append(country_id)
+        country_ids = get_country_ids(filters['Страна'])
+        if country_ids:
+            placeholders = ', '.join(['%s'] * len(country_ids))
+            conditions.append(f"id_country IN ({placeholders})")
+            params.extend(country_ids)
 
     if 'Возрастное ограничение' in filters:
         age_id = get_age_limit_id(filters['Возрастное ограничение'])
@@ -228,15 +229,18 @@ def get_filtered_films(filters):
         return films
 
 
-def get_country_id(name):
+def get_country_ids(names):
+    if isinstance(names, str):
+        names = [names]
     conn = connect_db()
     if not conn:
-        return None
+        return []
     with conn:
         with conn.cursor() as cursor:
-            cursor.execute("SELECT id FROM countries WHERE name = %s", (name,))
-            row = cursor.fetchone()
-            return row['id'] if row else None
+            format_strings = ','.join(['%s'] * len(names))
+            cursor.execute(f"SELECT id FROM countries WHERE name IN ({format_strings})", names)
+            rows = cursor.fetchall()
+            return [row['id'] for row in rows]
 
 
 def get_age_limit_id(label):
@@ -800,18 +804,82 @@ def on_click_rating(call):
     filter_choice(call.message)
 
 
+@bot.callback_query_handler(func=lambda call: call.data == 'country_done')
+def on_done_country(call):
+
+    clean_old_filters()
+    user_id = call.from_user.id
+    chat_id = call.message.chat.id
+    log_error(f"country_done нажата пользователем {user_id}", level='INFO')
+
+    if check_expired_and_reset(user_id, chat_id, call.message):
+        return
+
+    selected = user_selected_filters.get(user_id, {}).get('Страна', [])
+
+    if not selected:
+        bot.send_message(chat_id, "Вы не выбрали ни одной страны.")
+    else:
+        bot.send_message(chat_id, f"Вы выбрали: {', '.join(selected)}")
+
+    filter_choice(call.message)
+
+
 @bot.callback_query_handler(func=lambda call: call.data.startswith('country_'))
 def on_click_country(call):
-    clean_old_filters() 
-    user_id = call.from_user.id
-    if check_expired_and_reset(user_id, call.message.chat.id, call.message):
+    clean_old_filters()
+    if call.data == 'country_done':
         return
+    
+    user_id = call.from_user.id
+    chat_id = call.message.chat.id
+    message_id = call.message.message_id
+
+    if check_expired_and_reset(user_id, chat_id, call.message):
+        return
+
     user_filters = user_selected_filters.setdefault(user_id, {})
     update_filter_timestamp(user_id)
-    
-    country = call.data.split('_')[1]
-    user_filters['Страна'] = country
-    filter_choice(call.message)
+
+    if 'Страна' not in user_filters or not isinstance(user_filters['Страна'], list):
+        user_filters['Страна'] = []
+
+    # Инициализируем список, если его нет
+    selected_countries = user_filters.setdefault('Страна', [])
+
+    country = call.data.split('_', 1)[1]
+
+    if country in selected_countries:
+        selected_countries.remove(country)
+    else:
+        selected_countries.append(country)
+
+    all_countries = [
+        'Россия', 'США', 'Великобритания', 'СССР', 'Франция',
+        'Германия', 'Южная Корея', 'Дания', 'Испания'
+    ]
+
+    markup = types.InlineKeyboardMarkup(row_width=3)
+    buttons = []
+    for c in all_countries:
+        is_selected = " ✅" if c in selected_countries else ""
+        buttons.append(types.InlineKeyboardButton(f"{c}{is_selected}", callback_data=f'country_{c}'))
+
+    # Добавим кнопки по 3 в ряд
+    for i in range(0, len(buttons), 3):
+        markup.row(*buttons[i:i+3])
+
+    # Добавляем кнопку "Готово"
+    markup.add(types.InlineKeyboardButton("Готово", callback_data="country_done"))
+
+    try:
+        # Удаляем предыдущее сообщение
+        bot.delete_message(chat_id, message_id)
+    except Exception as e:
+        log_error(f"Ошибка при удалении сообщения: {str(e)}", level="WARNING")
+
+    # Отправляем новое с обновлённой разметкой
+    bot.send_message(chat_id, "Выберите страну или нажмите 'Готово':", reply_markup=markup)
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('limit_'))
