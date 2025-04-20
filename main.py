@@ -509,13 +509,17 @@ def start(message):
     btn2 = types.KeyboardButton('Случайный фильм')
     btn3 = types.KeyboardButton('Рекомендации')
     btn4 = types.KeyboardButton('Завершить работу')
-    btn5 = types.KeyboardButton('Оставить отзыв на работу бота')
     markup.row(btn1, btn2)
     markup.row(btn3, btn4)
-    markup.row(btn5)
     bot.send_message(message.chat.id, f'Привет, {message.from_user.username}! Выбери, что ты хочешь сделать 👇🏻', reply_markup=markup)
     bot.register_next_step_handler(message, on_click)
     log_error(f"Пользователь {message.from_user.id} начал сессию", level='INFO')
+
+
+@bot.message_handler(commands=['feedback'])
+def feedback_command(message):
+    bot.send_message(message.chat.id, 'Напишите ваш отзыв и отправьте его нам.')
+    bot.register_next_step_handler(message, save_feedback)
 
 
 def on_click(message):
@@ -557,10 +561,8 @@ def show_main_menu(message):
     btn2 = types.KeyboardButton('Случайный фильм')
     btn3 = types.KeyboardButton('Рекомендации')
     btn4 = types.KeyboardButton('Завершить работу')
-    btn5 = types.KeyboardButton('Оставить отзыв на работу бота')
     markup.row(btn1, btn2)
     markup.row(btn3, btn4)
-    markup.row(btn5)
     bot.send_message(message.chat.id, 'Что бы вы хотели сделать дальше?', reply_markup=markup)
     bot.register_next_step_handler(message, on_click)
 
