@@ -601,7 +601,7 @@ def filter_choice(message):
     btn6 = types.KeyboardButton('Рейтинг')
     btn3 = types.KeyboardButton('Актеры')
     btn_done = types.KeyboardButton('Показать фильмы')
-    btn_back = types.KeyboardButton('Назад')
+    btn_back = types.KeyboardButton('Отменить последний выбор')
     markup.row(btn1, btn2, btn3)
     markup.row(btn4, btn5, btn6)
     markup.row(btn7, btn_back, btn_done)
@@ -620,9 +620,16 @@ def on_click_filter(message):
     user_filters = user_selected_filters.setdefault(user_id, {})
     update_filter_timestamp(user_id)
 
-    if message.text == 'Назад':
-        if user_filters:
+    if message.text == 'Отменить последний выбор':
+        filters_only = {k: v for k, v in user_filters.items() if k != 'timestamp'}
+        if filters_only:
             user_filters.popitem()
+            bot.send_message(message.chat.id, 'Последний выбранный фильтр удалён.')
+        else:
+            bot.send_message(
+                message.chat.id,
+                'Вы ещё не выбрали ни одного критерия.'
+            )
         filter_choice(message)
         return
     filter_type = message.text
