@@ -728,7 +728,13 @@ def on_click_filter(message):
     if message.text not in user_filters:
         user_filters[message.text] = None
     if message.text == 'Показать фильмы':
-        on_click_show_films(message)
+        user_id = message.from_user.id
+        user_filters = user_selected_filters.setdefault(user_id, {})
+        filters_text = get_filters_summary(user_filters)
+        markup = types.InlineKeyboardMarkup()
+        markup.add(types.InlineKeyboardButton("Показать подборку", callback_data="show_films_confirmed"))
+        markup.add(types.InlineKeyboardButton("Изменить фильтры", callback_data="change_filters"))
+        bot.send_message(message.chat.id, f"Вы выбрали:\n\n{filters_text}\n\nПоказать подборку с этими фильтрами или изменить фильтры?", reply_markup=markup)
         return
     if message.text == 'Год':
         markup_inline = types.InlineKeyboardMarkup()
@@ -1210,6 +1216,42 @@ def on_click_genre(call):
         log_error(f"Ошибка при удалении сообщения: {str(e)}", level="WARNING")
 
     bot.send_message(chat_id, "Выберите жанры или нажмите 'Готово':", reply_markup=markup)
+
+
+def get_filters_summary(user_filters):
+    summary = []
+    if 'Год' in user_filters:
+        summary.append(f"Год: {user_filters['Год'][0]}–{user_filters['Год'][1]}")
+    if 'Длительность' in user_filters:
+        summary.append(f"Длительность: {user_filters['Длительность'][0]}–{user_filters['Длительность'][1]} мин")
+    if 'Рейтинг' in user_filters:
+        summary.append(f"Рейтинг: {user_filters['Рейтинг'][0]}–{user_filters['Рейтинг'][1]}")
+    if 'Страна' in user_filters and user_filters['Страна']:
+        summary.append(f"Страны: {', '.join(user_filters['Страна'])}")
+    if 'Жанр' in user_filters and user_filters['Жанр']:
+        genre_type = user_filters.get('Жанр_тип', 'OR')
+        type_str = "Все" if genre_type == 'AND' else "Любой из"
+        summary.append(f"Жанры ({type_str}): {', '.join(user_filters['Жанр'])}")
+    if 'Режиссер' in user_filters:
+        summary.append(f"Режиссер: {user_filters['Режиссер']}")
+    if 'Актеры' in user_filters and user_filters['Актеры']:
+        actor_type = user_filters['Актеры'].get('match_all', False)
+        type_str = "Все" if actor_type else "Любой из"
+        actors = ', '.join(user_filters['Актеры']['names'])
+        summary.append(f"Актеры ({type_str}): {actors}")
+    if 'Возрастное ограничение' in user_filters:
+        summary.append(f"Возраст: {user_filters['Возрастное ограничение']}")
+    return "\n".join(summary) if summary else "Фильтры не выбраны"
+
+
+@bot.callback_query_handler(func=lambda call: call.data == 'show_films_confirmed')
+def show_films_confirmed_handler(call):
+    on_click_show_films(call.message)
+
+
+@bot.callback_query_handler(func=lambda call: call.data == 'change_filters')
+def change_filters_handler(call):
+    filter_choice(call.message)
 
 
 bot.polling(none_stop=True)
